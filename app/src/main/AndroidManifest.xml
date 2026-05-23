@@ -35,6 +35,7 @@
         <activity android:name=".ExpenseActivity" />
         <activity android:name=".GoalsActivity" />
         <activity android:name=".ReceiptActivity" />
+        <activity android:name=".ReceiptPreviewActivity"/>
         <activity
             android:name=".ReportsActivity"
             tools:ignore="NewApi"/>
