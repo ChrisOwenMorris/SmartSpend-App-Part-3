@@ -1,23 +1,17 @@
 package com.smartspend
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {
-
-    private val db by lazy {
-        (application as SmartSpendApp).database
-    }
-
-    private val prefs by lazy {
-        getSharedPreferences("smartspend_login", Context.MODE_PRIVATE)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,15 +37,33 @@ class RegisterActivity : AppCompatActivity() {
                 confirmPassword.isEmpty() -> etConfirmPassword.error = "Confirm your password"
                 password != confirmPassword -> Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show()
                 else -> {
-                    prefs.edit()
-                        .putString("registered_name", name)
-                        .putString("registered_email", email)
-                        .putString("registered_password", password)
-                        .apply()
+                    Log.d("RegisterActivity", "Attempting Firebase registration for: $email")
+                    btnRegister.isEnabled = false
 
-                    Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, LoginActivity::class.java))
-                    finish()
+                    lifecycleScope.launch {
+                        val firebaseRepo = com.smartspend.data.firebase.FirebaseRepository()
+                        val success = firebaseRepo.registerUser(email, password, name)
+
+                        btnRegister.isEnabled = true
+
+                        if (success) {
+                            Log.d("RegisterActivity", "Registration successful for: $email")
+                            Toast.makeText(
+                                this@RegisterActivity,
+                                "Account created successfully",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            startActivity(Intent(this@RegisterActivity, LoginActivity::class.java))
+                            finish()
+                        } else {
+                            Log.e("RegisterActivity", "Registration failed for: $email — email may already be in use")
+                            Toast.makeText(
+                                this@RegisterActivity,
+                                "Registration failed. Email may already be in use.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
             }
         }
