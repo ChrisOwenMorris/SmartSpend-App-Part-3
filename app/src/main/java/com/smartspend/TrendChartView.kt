@@ -15,21 +15,44 @@ class TrendChartView @JvmOverloads constructor(
 
     private var data: List<TrendSummary> = emptyList()
 
-    private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = "#2575FC".toColorInt()
+        strokeWidth = 6f
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = "#2575FC".toColorInt()
         style = Paint.Style.FILL
     }
 
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val dotOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+    }
+
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#E0E0E0")
+        strokeWidth = 2f
+        style = Paint.Style.STROKE
+    }
+
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.GRAY
-        textSize = 32f
+        textSize = 28f
         textAlign = Paint.Align.CENTER
     }
 
-    private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.LTGRAY
-        strokeWidth = 4f
+    private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.DKGRAY
+        textSize = 24f
+        textAlign = Paint.Align.RIGHT
     }
+
+    private val path = Path()
+    private val points = mutableListOf<PointF>()
 
     fun setData(newData: List<TrendSummary>) {
         data = newData
@@ -38,32 +61,57 @@ class TrendChartView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (data.isEmpty()) return
 
-        val padding = 60f
-        val chartWidth = width - (padding * 2)
-        val chartHeight = height - (padding * 2)
+        val paddingLeft = 80f
+        val paddingRight = 40f
+        val paddingTop = 40f
+        val paddingBottom = 80f
 
-        val maxAmount = data.maxOf { it.total }.toFloat().coerceAtLeast(1f)
-        val barWidth = (chartWidth / data.size) * 0.7f
-        val spacing = (chartWidth / data.size) * 0.3f
+        val chartWidth = width - paddingLeft - paddingRight
+        val chartHeight = height - paddingTop - paddingBottom
 
-        // Draw X-Axis
-        canvas.drawLine(padding, height - padding, width - padding, height - padding, axisPaint)
+        if (data.isEmpty()) {
+            canvas.drawText("No data available", width / 2f, height / 2f, labelPaint)
+            return
+        }
+
+        val maxAmount = data.maxOfOrNull { it.total }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+        val minAmount = 0f
+
+        for (i in 0..4) {
+            val y = paddingTop + chartHeight - (i * chartHeight / 4)
+            canvas.drawLine(paddingLeft, y, width - paddingRight, y, gridPaint)
+            val value = minAmount + (i * (maxAmount - minAmount) / 4)
+            canvas.drawText("R${(value / 1000).toInt()}k", paddingLeft - 10f, y + 8f, valuePaint)
+        }
+
+        points.clear()
+        path.reset()
 
         data.forEachIndexed { index, summary ->
-            val barHeight = (summary.total.toFloat() / maxAmount) * chartHeight
+            val x = paddingLeft + (index * chartWidth / (data.size - 1).coerceAtLeast(1))
+            val normalizedValue = if (maxAmount > minAmount) (summary.total.toFloat() - minAmount) / (maxAmount - minAmount) else 0f
+            val y = paddingTop + chartHeight - (normalizedValue * chartHeight)
+            points.add(PointF(x, y))
 
-            val left = padding + (index * (barWidth + spacing)) + (spacing / 2)
-            val top = (height - padding) - barHeight
-            val right = left + barWidth
-            val bottom = height - padding
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
 
-            // Draw Bar
-            canvas.drawRect(left, top, right, bottom, barPaint)
+        canvas.drawPath(path, linePaint)
 
-            // Draw Month Label (e.g., "04")
-            canvas.drawText(summary.month, left + (barWidth / 2), height - 20f, textPaint)
+        points.forEachIndexed { index, point ->
+            canvas.drawCircle(point.x, point.y, 12f, dotPaint)
+            canvas.drawCircle(point.x, point.y, 6f, dotOutlinePaint)
+
+            val monthLabel = data.getOrNull(index)?.month ?: ""
+            canvas.drawText(monthLabel, point.x, height - 20f, labelPaint)
+
+            val value = data.getOrNull(index)?.total ?: 0.0
+            canvas.drawText("R${value.toInt()}", point.x, point.y - 20f, valuePaint)
         }
     }
 }
