@@ -2,7 +2,6 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -18,7 +17,7 @@
             android:id="@+id/btnMenu"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="☰"
+            android:text="@string/text"
             android:textSize="24sp"
             android:textColor="#FFFFFF" />
 
@@ -62,7 +61,7 @@
                     android:id="@+id/tvTotalBudget"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="R 0.00"
+                    android:text="@string/default_amount"
                     android:textColor="#1565C0"
                     android:textSize="28sp"
                     android:textStyle="bold" />
@@ -91,7 +90,7 @@
                     android:id="@+id/tvTransactionCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Transactions: 0"
+                    android:text="@string/default_transaction_count"
                     android:textSize="12sp"
                     android:layout_marginEnd="16dp"/>
 
@@ -99,15 +98,17 @@
                     android:id="@+id/tvLatestExpense"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Latest: None"
+                    android:text="@string/latest_none"
                     android:textSize="12sp"/>
             </LinearLayout>
 
+            <!-- FIX: added baselineAligned false for performance warning -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="2"
+                android:baselineAligned="false"
                 android:layout_marginTop="12dp">
 
                 <LinearLayout
@@ -130,7 +131,7 @@
 
                     <TextView
                         android:id="@+id/tvTotalSpent"
-                        android:text="R 0.00"
+                        android:text="@string/default_amount"
                         android:textColor="#212121"
                         android:textSize="20sp"
                         android:textStyle="bold"
@@ -158,7 +159,7 @@
 
                     <TextView
                         android:id="@+id/tvRemaining"
-                        android:text="R 0.00"
+                        android:text="@string/default_amount"
                         android:textColor="#212121"
                         android:textSize="20sp"
                         android:textStyle="bold"
@@ -188,10 +189,19 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Recent Transactions"
+                android:text="@string/recent_transactions"
                 android:textStyle="bold"
                 android:layout_marginTop="20dp"
                 android:textColor="#333333"/>
+
+            <TextView
+                android:id="@+id/tvTotalIncome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_amount"
+                android:textColor="@color/status_success"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvRecentExpenses"

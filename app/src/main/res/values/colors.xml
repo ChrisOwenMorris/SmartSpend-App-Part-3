@@ -15,4 +15,7 @@
     <color name="ss_error">#E53935</color>
     <color name="ss_text_primary">#1A1A2E</color>
     <color name="ss_text_secondary">#546E7A</color>
+    <color name="status_success">#00C853</color>
+    <color name="status_danger">#E53935</color>
+    <color name="status_warning">#FF8F00</color>
 </resources>

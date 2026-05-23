@@ -5,6 +5,15 @@
     <string name="copyright">© 2026 SmartSpend</string>
     <string name="app_menu_icon">Navigation Menu</string>
 
+    <string name="save">Save</string>
+    <string name="budget_already_set_title">Budget Already Set</string>
+    <string name="update_anyway">Update Anyway</string>
+    <string name="budget_hint">e.g. 5000</string>
+    <string name="budget_dialog_message">Enter your total spending limit for this month</string>
+    <string name="budget_empty_error">Please enter an amount</string>
+    <string name="budget_invalid_error">Please enter a valid amount greater than zero</string>
+    <string name="transaction_count">Transactions: %d</string>
+
     <string name="welcome_back">Welcome Back</string>
     <string name="label_email">Email Address</string>
     <string name="hint_email">Enter your email</string>
@@ -169,4 +178,9 @@
     <string name="reports">Reports</string>
     <string name="goals">Goals</string>
     <string name="set_monthly_budget">Set Monthly Budget</string>
+    <string name="total_income">Total Income</string>
+    <string name="default_amount">R 0.00</string>
+    <string name="default_transaction_count">Transactions: 0</string>
+    <string name="recent_transactions">Recent Transactions</string>
+    <string name="hamburger_menu">☰</string>
 </resources>
