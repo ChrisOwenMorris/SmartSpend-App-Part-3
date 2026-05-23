@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -58,4 +59,13 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // Firebase BOM (manages all Firebase versions)
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    // Firebase Auth
+    implementation("com.google.firebase:firebase-auth-ktx")
+    // Firebase Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    // Firebase Storage (for receipt images)
+    implementation("com.google.firebase:firebase-storage-ktx")
 }

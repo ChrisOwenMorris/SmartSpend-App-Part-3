@@ -2,6 +2,7 @@ package com.smartspend
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -10,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
@@ -41,12 +44,30 @@ class LoginActivity : AppCompatActivity() {
 
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
-            } else {
-                sharedPrefs.edit()
-                    .putBoolean("normal_login_done", true)
-                    .apply()
+                return@setOnClickListener
+            }
 
-                goToDashboard()
+            Log.d("LoginActivity", "Attempting Firebase login for: $email")
+            btnSignIn.isEnabled = false
+
+            lifecycleScope.launch {
+                val firebaseRepo = com.smartspend.data.firebase.FirebaseRepository()
+                val success = firebaseRepo.loginUser(email, password)
+
+                btnSignIn.isEnabled = true
+
+                if (success) {
+                    Log.d("LoginActivity", "Login successful for: $email")
+                    sharedPrefs.edit().putBoolean("normal_login_done", true).apply()
+                    goToDashboard()
+                } else {
+                    Log.e("LoginActivity", "Login failed for: $email — invalid credentials")
+                    Toast.makeText(
+                        this@LoginActivity,
+                        "Invalid email or password",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
 
