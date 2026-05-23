@@ -265,4 +265,4 @@ class ReceiptActivity : AppCompatActivity() {
             Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
     }
-}
+}//updated Receipt Functionality

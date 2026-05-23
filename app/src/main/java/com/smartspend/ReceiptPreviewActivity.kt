@@ -23,4 +23,4 @@ class ReceiptPreviewActivity : AppCompatActivity() {
             }
         }
     }
-}
+}//Preview Functionality
