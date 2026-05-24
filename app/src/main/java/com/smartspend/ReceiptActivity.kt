@@ -1,11 +1,11 @@
 package com.smartspend
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Editable
@@ -13,6 +13,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -35,10 +36,40 @@ class ReceiptActivity : AppCompatActivity() {
     private var imageUri: Uri? = null
 
     companion object {
-        private const val CAMERA_REQUEST = 100
-        private const val GALLERY_REQUEST = 200
         private const val CAMERA_PERMISSION_CODE = 300
     }
+
+    private val cameraLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val photo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    result.data?.extras?.getParcelable("data", Bitmap::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    result.data?.extras?.getParcelable("data")
+                }
+                photo?.let {
+                    previewImage.setImageBitmap(it)
+                    previewImage.visibility = ImageView.VISIBLE
+                    Toast.makeText(this, "Camera image captured", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+    private val galleryLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                imageUri = result.data?.data
+                imageUri?.let { uri ->
+                    val permanentPath = saveImageToInternalStorage(uri)
+                    previewImage.setImageURI(uri)
+                    previewImage.visibility = ImageView.VISIBLE
+                    val intent = Intent(this, ExpenseActivity::class.java)
+                    intent.putExtra("receiptPath", permanentPath)
+                    startActivity(intent)
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +111,6 @@ class ReceiptActivity : AppCompatActivity() {
         })
     }
 
-
     private fun saveImageToInternalStorage(uri: Uri): String {
         val inputStream = contentResolver.openInputStream(uri)
         val fileName = "receipt_${System.currentTimeMillis()}.jpg"
@@ -93,13 +123,10 @@ class ReceiptActivity : AppCompatActivity() {
     }
 
     private fun loadReceipts(search: String = "") {
-
         lifecycleScope.launch {
-
             val expenses = db.expenseDao().getAllExpenses(FirebaseAuth.getInstance().currentUser?.uid ?: "")
 
             runOnUiThread {
-
                 container.removeAllViews()
 
                 val filteredExpenses = expenses.filter {
@@ -107,7 +134,6 @@ class ReceiptActivity : AppCompatActivity() {
                 }.reversed()
 
                 for (expense in filteredExpenses) {
-
                     if (expense.receiptPath.isNullOrEmpty()) continue
 
                     val card = LinearLayout(this@ReceiptActivity).apply {
@@ -125,7 +151,6 @@ class ReceiptActivity : AppCompatActivity() {
                         setBackgroundResource(R.drawable.card_background)
                     }
 
-                    // Thumbnail — loads from permanent file path
                     val image = ImageView(this@ReceiptActivity).apply {
                         layoutParams = LinearLayout.LayoutParams(140, 140)
                         scaleType = ImageView.ScaleType.CENTER_CROP
@@ -145,7 +170,6 @@ class ReceiptActivity : AppCompatActivity() {
                         }
                     }
 
-                    // Text Container
                     val textContainer = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.VERTICAL
 
@@ -158,19 +182,16 @@ class ReceiptActivity : AppCompatActivity() {
                         layoutParams = params
                     }
 
-                    // Description
                     val title = TextView(this@ReceiptActivity).apply {
                         text = if (expense.description.isBlank()) "Expense" else expense.description
                         textSize = 16f
                     }
 
-                    // Date
                     val date = TextView(this@ReceiptActivity).apply {
                         text = expense.date
                         textSize = 12f
                     }
 
-                    // Amount
                     val amount = TextView(this@ReceiptActivity).apply {
                         text = "R %.2f".format(expense.amount)
                         textSize = 16f
@@ -190,7 +211,6 @@ class ReceiptActivity : AppCompatActivity() {
     }
 
     private fun openCamera() {
-
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.CAMERA
@@ -203,7 +223,7 @@ class ReceiptActivity : AppCompatActivity() {
             )
         } else {
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            startActivityForResult(intent, CAMERA_REQUEST)
+            cameraLauncher.launch(intent)
         }
     }
 
@@ -212,42 +232,7 @@ class ReceiptActivity : AppCompatActivity() {
             Intent.ACTION_PICK,
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         )
-        startActivityForResult(intent, GALLERY_REQUEST)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (resultCode == Activity.RESULT_OK) {
-
-            when (requestCode) {
-
-                CAMERA_REQUEST -> {
-                    val photo = data?.extras?.get("data") as Bitmap
-                    previewImage.setImageBitmap(photo)
-                    previewImage.visibility = ImageView.VISIBLE
-
-                    Toast.makeText(this, "Camera image captured", Toast.LENGTH_SHORT).show()
-                }
-
-                GALLERY_REQUEST -> {
-                    imageUri = data?.data
-
-                    imageUri?.let { uri ->
-
-                        val permanentPath = saveImageToInternalStorage(uri)
-
-                        previewImage.setImageURI(uri)
-                        previewImage.visibility = ImageView.VISIBLE
-
-                        val intent = Intent(this, ExpenseActivity::class.java)
-                        intent.putExtra("receiptPath", permanentPath)
-                        startActivity(intent)
-                    }
-                }
-            }
-        }
+        galleryLauncher.launch(intent)
     }
 
     override fun onRequestPermissionsResult(
@@ -266,4 +251,4 @@ class ReceiptActivity : AppCompatActivity() {
             Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
     }
-}//updated Receipt Functionality
+}
