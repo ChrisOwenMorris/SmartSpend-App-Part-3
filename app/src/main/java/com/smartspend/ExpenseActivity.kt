@@ -6,11 +6,14 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.data.entity.Category
 import com.smartspend.data.entity.Expense
@@ -37,6 +40,7 @@ class ExpenseActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var btnStartTime: Button
     private lateinit var btnEndTime: Button
+    private lateinit var btnCreateCategory: Button
 
     private lateinit var spCategory: Spinner
 
@@ -57,6 +61,7 @@ class ExpenseActivity : AppCompatActivity() {
         receiptPath = intent.getStringExtra("receiptPath")
 
         bindViews()
+        setupToggleButtons()   // set initial colours before any tap
         setupDatePicker()
         setupListeners()
         setupCategorySpinner()
@@ -75,82 +80,88 @@ class ExpenseActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
-        etAmount = findViewById(R.id.etAmount)
-        etDate = findViewById(R.id.etDate)
-        etDescription = findViewById(R.id.etDescription)
+        etAmount           = findViewById(R.id.etAmount)
+        etDate             = findViewById(R.id.etDate)
+        etDescription      = findViewById(R.id.etDescription)
+        tvSummaryAmount    = findViewById(R.id.tvSummaryAmount)
+        tvSummaryDate      = findViewById(R.id.tvSummaryDate)
+        btnExpense         = findViewById(R.id.btnExpense)
+        btnIncome          = findViewById(R.id.btnIncome)
+        btnSave            = findViewById(R.id.btnSave)
+        btnStartTime       = findViewById(R.id.btnStartTime)
+        btnEndTime         = findViewById(R.id.btnEndTime)
+        btnCreateCategory  = findViewById(R.id.btnCreateCategory)
+        spCategory         = findViewById(R.id.spCategory)
+    }
 
-        tvSummaryAmount = findViewById(R.id.tvSummaryAmount)
-        tvSummaryDate = findViewById(R.id.tvSummaryDate)
+    /** Apply the correct colours immediately on open — Expense is selected by default. */
+    private fun setupToggleButtons() {
+        applyExpenseSelected()
+    }
 
-        btnExpense = findViewById(R.id.btnExpense)
-        btnIncome = findViewById(R.id.btnIncome)
-        btnSave = findViewById(R.id.btnSave)
-        btnStartTime = findViewById(R.id.btnStartTime)
-        btnEndTime = findViewById(R.id.btnEndTime)
+    private fun applyExpenseSelected() {
+        isExpense = true
+        btnExpense.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#E53935"))
+        btnExpense.setTextColor(Color.WHITE)
+        btnIncome.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#9E9E9E"))
+        btnIncome.setTextColor(Color.WHITE)
+        tvSummaryAmount.setTextColor(Color.parseColor("#E91E63"))
+    }
 
-        spCategory = findViewById(R.id.spCategory)
+    private fun applyIncomeSelected() {
+        isExpense = false
+        btnIncome.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#00C896"))
+        btnIncome.setTextColor(Color.WHITE)
+        btnExpense.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(Color.parseColor("#9E9E9E"))
+        btnExpense.setTextColor(Color.WHITE)
+        tvSummaryAmount.setTextColor(Color.parseColor("#00C896"))
     }
 
     private fun setupListeners() {
 
-        // EXPENSE BUTTON
         btnExpense.setOnClickListener {
-            isExpense = true
+            applyExpenseSelected()
             updateSummary()
-            tvSummaryAmount.setTextColor(Color.parseColor("#E91E63"))
-            btnExpense.setBackgroundColor(Color.parseColor("#00C896"))
-            btnIncome.setBackgroundColor(Color.parseColor("#DDDDDD"))
         }
 
-        // INCOME BUTTON
         btnIncome.setOnClickListener {
-            isExpense = false
+            applyIncomeSelected()
             updateSummary()
-            tvSummaryAmount.setTextColor(Color.parseColor("#00C896"))
-            btnIncome.setBackgroundColor(Color.parseColor("#00C896"))
-            btnExpense.setBackgroundColor(Color.parseColor("#DDDDDD"))
             Toast.makeText(this, "Income selected", Toast.LENGTH_SHORT).show()
         }
 
-        // LIVE AMOUNT UPDATE
         etAmount.addTextChangedListener { updateSummary() }
 
-        // START TIME PICKER
         btnStartTime.setOnClickListener {
             val cal = Calendar.getInstance()
-            TimePickerDialog(
-                this,
-                { _, hour, minute ->
-                    startTime = "%02d:%02d".format(hour, minute)
-                    btnStartTime.text = "Start Time: $startTime"
-                    Log.d("ExpenseActivity", "Start time set: $startTime")
-                },
-                cal.get(Calendar.HOUR_OF_DAY),
-                cal.get(Calendar.MINUTE),
-                true
-            ).show()
+            TimePickerDialog(this, { _, hour, minute ->
+                startTime = "%02d:%02d".format(hour, minute)
+                btnStartTime.text = "Start Time: $startTime"
+                Log.d("ExpenseActivity", "Start time set: $startTime")
+            }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
         }
 
-        // END TIME PICKER
         btnEndTime.setOnClickListener {
             val cal = Calendar.getInstance()
-            TimePickerDialog(
-                this,
-                { _, hour, minute ->
-                    endTime = "%02d:%02d".format(hour, minute)
-                    btnEndTime.text = "End Time: $endTime"
-                    Log.d("ExpenseActivity", "End time set: $endTime")
-                },
-                cal.get(Calendar.HOUR_OF_DAY),
-                cal.get(Calendar.MINUTE),
-                true
-            ).show()
+            TimePickerDialog(this, { _, hour, minute ->
+                endTime = "%02d:%02d".format(hour, minute)
+                btnEndTime.text = "End Time: $endTime"
+                Log.d("ExpenseActivity", "End time set: $endTime")
+            }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
         }
 
-        // QUICK BUTTONS
+        // Create Category bottom sheet
+        btnCreateCategory.setOnClickListener {
+            showCreateCategoryBottomSheet()
+        }
+
+        // Quick buttons
         val quickButtons = listOf(1200.0, 700.0, 35.0)
         val quickContainer = findViewById<LinearLayout>(R.id.quick_add_container)
-
         if (quickContainer != null) {
             for (i in 0 until quickContainer.childCount) {
                 val button = quickContainer.getChildAt(i) as? Button ?: continue
@@ -160,23 +171,103 @@ class ExpenseActivity : AppCompatActivity() {
         }
     }
 
+    private fun showCreateCategoryBottomSheet() {
+        val bottomSheet = BottomSheetDialog(this)
+
+        // Build a simple layout programmatically so no extra XML file is needed
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(64, 48, 64, 48)
+        }
+
+        val title = TextView(this).apply {
+            text = "Create New Category"
+            textSize = 18f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, 24)
+        }
+
+        val input = TextInputEditText(this).apply {
+            hint = "Category name"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        }
+
+        val btnAdd = Button(this).apply {
+            text = "Add Category"
+            setTextColor(Color.WHITE)
+            backgroundTintList =
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#00C896"))
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.topMargin = 32
+            layoutParams = params
+        }
+
+        btnAdd.setOnClickListener {
+            val name = input.text.toString().trim()
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Please enter a category name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val newCategory = Category(userId = userId, categoryName = name)
+                db.categoryDao().insert(newCategory)
+                Log.d("ExpenseActivity", "New category '$name' inserted")
+
+                // Sync to Firebase
+                val firebaseRepo = FirebaseRepository()
+                firebaseRepo.saveCategory(newCategory)
+
+                // Reload spinner
+                reloadCategorySpinner(userId)
+
+                runOnUiThread {
+                    Toast.makeText(this@ExpenseActivity, "'$name' added!", Toast.LENGTH_SHORT).show()
+                    bottomSheet.dismiss()
+                }
+            }
+        }
+
+        layout.addView(title)
+        layout.addView(input)
+        layout.addView(btnAdd)
+
+        bottomSheet.setContentView(layout)
+        bottomSheet.show()
+    }
+
+    private suspend fun reloadCategorySpinner(userId: String) {
+        val categories = db.categoryDao().getAllCategories(userId)
+        loadedCategories = categories
+        val names = categories.map { it.categoryName }
+        runOnUiThread {
+            val adapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_item,
+                names
+            )
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spCategory.adapter = adapter
+            // Select the newly added item (last in list since sorted A-Z it may not be last,
+            // but selecting last is fine — user can change it)
+            spCategory.setSelection(names.size - 1)
+        }
+    }
+
     private fun setupDatePicker() {
         etDate.setOnClickListener {
-            DatePickerDialog(
-                this,
-                { _, year, month, day ->
-                    calendar.set(year, month, day)
-                    updateDate()
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
+            DatePickerDialog(this, { _, year, month, day ->
+                calendar.set(year, month, day)
+                updateDate()
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
         }
     }
 
     private fun setupCategorySpinner() {
-        // Disable save while categories load so the user cannot save a categoryId=0 record
         btnSave.isEnabled = false
         Log.d("ExpenseActivity", "Save button disabled — waiting for categories to load")
 
@@ -191,9 +282,8 @@ class ExpenseActivity : AppCompatActivity() {
                     db.categoryDao().insert(Category(userId = userId, categoryName = name))
                 }
                 categories = db.categoryDao().getAllCategories(userId)
-                Log.d("ExpenseActivity", "Seeded ${categories.size} default categories into Room DB")
+                Log.d("ExpenseActivity", "Seeded ${categories.size} default categories")
 
-                // Sync seeded categories to Firebase
                 val firebaseRepo = FirebaseRepository()
                 categories.forEach { cat -> firebaseRepo.saveCategory(cat) }
             }
@@ -270,14 +360,12 @@ class ExpenseActivity : AppCompatActivity() {
                     receiptPath = receiptPath
                 )
 
-                // Insert into Room and capture the generated ID
                 val newId = db.expenseDao().insert(expense)
                 val savedExpense = expense.copy(expenseId = newId.toInt())
-                Log.d("ExpenseActivity", "Expense inserted into Room DB with id=$newId: $description")
+                Log.d("ExpenseActivity", "Expense inserted into Room DB with id=$newId")
 
                 val firebaseRepo = FirebaseRepository()
 
-                // If income is selected, also save to the income table
                 if (!isExpense) {
                     val income = com.smartspend.data.entity.Income(
                         userId = userId,
@@ -289,13 +377,12 @@ class ExpenseActivity : AppCompatActivity() {
                     val incomeId = db.incomeDao().insert(income)
                     val savedIncome = income.copy(id = incomeId.toInt())
                     firebaseRepo.saveIncome(savedIncome)
-                    Log.d("ExpenseActivity", "Income inserted into Room and Firebase with id=$incomeId")
+                    Log.d("ExpenseActivity", "Income inserted with id=$incomeId")
                 }
 
-                // Sync expense to Firebase using the real Room ID and category name
                 val synced = firebaseRepo.saveExpense(savedExpense, categoryName)
                 if (synced) {
-                    Log.d("ExpenseActivity", "Expense synced to Firebase: $description")
+                    Log.d("ExpenseActivity", "Expense synced to Firebase")
                 } else {
                     Log.w("ExpenseActivity", "Firebase sync failed, saved locally only")
                 }
@@ -306,9 +393,7 @@ class ExpenseActivity : AppCompatActivity() {
                         if (isExpense) "Expense saved successfully!" else "Income saved successfully!",
                         Toast.LENGTH_SHORT
                     ).show()
-
                     clearForm()
-
                     val intent = Intent(this@ExpenseActivity, DashboardActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     startActivity(intent)

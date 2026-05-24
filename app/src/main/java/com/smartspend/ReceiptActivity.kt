@@ -1,6 +1,7 @@
 package com.smartspend
 
 import android.Manifest
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -19,9 +20,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
+import com.smartspend.data.entity.Category
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Calendar
 
 class ReceiptActivity : AppCompatActivity() {
 
@@ -32,8 +35,14 @@ class ReceiptActivity : AppCompatActivity() {
     private lateinit var previewImage: ImageView
     private lateinit var container: LinearLayout
     private lateinit var searchBox: EditText
+    private lateinit var spFilterCategory: Spinner
+    private lateinit var etFilterDate: EditText
+    private lateinit var btnClearDate: Button
 
     private var imageUri: Uri? = null
+    private var selectedFilterDate: String = ""          // "" means no date filter
+    private var loadedCategories: List<Category> = emptyList()
+    private var selectedCategoryFilterId: Int = -1       // -1 means "All"
 
     companion object {
         private const val CAMERA_PERMISSION_CODE = 300
@@ -77,38 +86,87 @@ class ReceiptActivity : AppCompatActivity() {
 
         NavigationHelper.setupMenu(this)
 
-        val btnGallery = findViewById<Button>(R.id.btnGallery)
-        val cameraCard = findViewById<LinearLayout>(R.id.topCardContainer)
+        previewImage    = findViewById(R.id.ivReceiptPreview)
+        container       = findViewById(R.id.recentReceiptsContainer)
+        searchBox       = findViewById(R.id.etSearchReceipts)
+        spFilterCategory = findViewById(R.id.spFilterCategory)
+        etFilterDate    = findViewById(R.id.etFilterDate)
+        btnClearDate    = findViewById(R.id.btnClearDate)
 
-        previewImage = findViewById(R.id.ivReceiptPreview)
-        container = findViewById(R.id.recentReceiptsContainer)
-        searchBox = findViewById(R.id.etSearchReceipts)
+        val btnGallery   = findViewById<Button>(R.id.btnGallery)
+        val cameraCard   = findViewById<LinearLayout>(R.id.topCardContainer)
 
-        cameraCard.setOnClickListener {
-            openCamera()
-        }
+        cameraCard.setOnClickListener { openCamera() }
+        btnGallery.setOnClickListener { openGallery() }
 
-        btnGallery.setOnClickListener {
-            openGallery()
-        }
+        setupCategoryFilterSpinner()
+        setupDateFilter()
 
+        // Search text filter
         searchBox.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                loadReceipts(s.toString())
-            }
-
+            override fun afterTextChanged(s: Editable?) { applyFilters() }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        loadReceipts()
+        // Clear date button
+        btnClearDate.setOnClickListener {
+            selectedFilterDate = ""
+            etFilterDate.setText("")
+            applyFilters()
+        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 NavigationHelper.goToDashboard(this@ReceiptActivity)
             }
         })
+    }
+
+    private fun setupCategoryFilterSpinner() {
+        lifecycleScope.launch {
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val categories = db.categoryDao().getAllCategories(userId)
+            loadedCategories = categories
+
+            runOnUiThread {
+                // "All" as the first entry
+                val names = mutableListOf("All Categories") + categories.map { it.categoryName }
+                val adapter = ArrayAdapter(
+                    this@ReceiptActivity,
+                    android.R.layout.simple_spinner_item,
+                    names
+                )
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spFilterCategory.adapter = adapter
+
+                spFilterCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, pos: Int, id: Long) {
+                        selectedCategoryFilterId = if (pos == 0) -1 else loadedCategories[pos - 1].categoryId
+                        applyFilters()
+                    }
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
+                }
+
+                applyFilters()
+            }
+        }
+    }
+
+    private fun setupDateFilter() {
+        etFilterDate.setOnClickListener {
+            val cal = Calendar.getInstance()
+            DatePickerDialog(this, { _, year, month, day ->
+                selectedFilterDate = "%04d-%02d-%02d".format(year, month + 1, day)
+                etFilterDate.setText(selectedFilterDate)
+                applyFilters()
+            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+        }
+    }
+
+    private fun applyFilters() {
+        val searchText = searchBox.text.toString()
+        loadReceipts(searchText, selectedCategoryFilterId, selectedFilterDate)
     }
 
     private fun saveImageToInternalStorage(uri: Uri): String {
@@ -122,83 +180,119 @@ class ReceiptActivity : AppCompatActivity() {
         return file.absolutePath
     }
 
-    private fun loadReceipts(search: String = "") {
+    /**
+     * Loads ALL expenses, then filters by description, category, and date.
+     * The most recent expense that has a receiptPath is auto-shown in the top preview.
+     * All matching expenses are listed below, whether or not they have a receipt image.
+     */
+    private fun loadReceipts(
+        search: String = "",
+        categoryId: Int = -1,
+        date: String = ""
+    ) {
         lifecycleScope.launch {
-            val expenses = db.expenseDao().getAllExpenses(FirebaseAuth.getInstance().currentUser?.uid ?: "")
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val expenses = db.expenseDao().getAllExpenses(userId)
 
             runOnUiThread {
                 container.removeAllViews()
 
-                val filteredExpenses = expenses.filter {
-                    it.description.contains(search, ignoreCase = true)
-                }.reversed()
+                val filtered = expenses
+                    .filter { expense ->
+                        val matchesSearch = search.isEmpty() ||
+                                expense.description.contains(search, ignoreCase = true)
+                        val matchesCategory = categoryId == -1 || expense.categoryId == categoryId
+                        val matchesDate = date.isEmpty() || expense.date == date
+                        matchesSearch && matchesCategory && matchesDate
+                    }
+                    .sortedByDescending { it.date }   // most recent first
 
-                for (expense in filteredExpenses) {
-                    if (expense.receiptPath.isNullOrEmpty()) continue
+                // Auto-preview the most recent receipt image
+                val mostRecentWithImage = filtered.firstOrNull { !it.receiptPath.isNullOrEmpty() }
+                if (mostRecentWithImage != null) {
+                    val file = File(mostRecentWithImage.receiptPath!!)
+                    if (file.exists()) {
+                        previewImage.setImageURI(Uri.fromFile(file))
+                        previewImage.visibility = ImageView.VISIBLE
+                    }
+                } else {
+                    previewImage.visibility = ImageView.GONE
+                }
 
+                // List ALL filtered expenses below
+                for (expense in filtered) {
                     val card = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.HORIZONTAL
                         setPadding(24, 24, 24, 24)
                         gravity = Gravity.CENTER_VERTICAL
-
                         val params = LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT,
                             LinearLayout.LayoutParams.WRAP_CONTENT
                         )
                         params.setMargins(0, 0, 0, 24)
                         layoutParams = params
-
                         setBackgroundResource(R.drawable.card_background)
                     }
 
+                    // Thumbnail — only shown if a receipt image exists
                     val image = ImageView(this@ReceiptActivity).apply {
-                        layoutParams = LinearLayout.LayoutParams(140, 140)
+                        val size = 140
+                        layoutParams = LinearLayout.LayoutParams(size, size)
                         scaleType = ImageView.ScaleType.CENTER_CROP
 
-                        val file = File(expense.receiptPath)
-                        if (file.exists()) {
-                            setImageURI(Uri.fromFile(file))
-                        }
-
-                        setOnClickListener {
-                            val intent = Intent(
-                                this@ReceiptActivity,
-                                ReceiptPreviewActivity::class.java
-                            )
-                            intent.putExtra("receiptPath", expense.receiptPath)
-                            startActivity(intent)
+                        val hasImage = !expense.receiptPath.isNullOrEmpty()
+                        if (hasImage) {
+                            val file = File(expense.receiptPath!!)
+                            if (file.exists()) {
+                                setImageURI(Uri.fromFile(file))
+                            } else {
+                                setImageResource(android.R.drawable.ic_menu_report_image)
+                            }
+                            setOnClickListener {
+                                val intent = Intent(this@ReceiptActivity, ReceiptPreviewActivity::class.java)
+                                intent.putExtra("receiptPath", expense.receiptPath)
+                                startActivity(intent)
+                            }
+                        } else {
+                            // Placeholder when no image
+                            setImageResource(android.R.drawable.ic_menu_report_image)
+                            alpha = 0.3f
                         }
                     }
 
                     val textContainer = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.VERTICAL
-
-                        val params = LinearLayout.LayoutParams(
-                            0,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            1f
-                        )
+                        val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                         params.setMargins(24, 0, 0, 0)
                         layoutParams = params
                     }
+
+                    // Look up category name for display
+                    val categoryName = loadedCategories
+                        .firstOrNull { it.categoryId == expense.categoryId }
+                        ?.categoryName ?: "Uncategorised"
 
                     val title = TextView(this@ReceiptActivity).apply {
                         text = if (expense.description.isBlank()) "Expense" else expense.description
                         textSize = 16f
                     }
-
-                    val date = TextView(this@ReceiptActivity).apply {
+                    val dateTv = TextView(this@ReceiptActivity).apply {
                         text = expense.date
                         textSize = 12f
                     }
-
+                    val categoryTv = TextView(this@ReceiptActivity).apply {
+                        text = categoryName
+                        textSize = 12f
+                        setTextColor(android.graphics.Color.parseColor("#00C896"))
+                    }
                     val amount = TextView(this@ReceiptActivity).apply {
                         text = "R %.2f".format(expense.amount)
                         textSize = 16f
                     }
 
                     textContainer.addView(title)
-                    textContainer.addView(date)
+                    textContainer.addView(dateTv)
+                    textContainer.addView(categoryTv)
 
                     card.addView(image)
                     card.addView(textContainer)
@@ -206,21 +300,24 @@ class ReceiptActivity : AppCompatActivity() {
 
                     container.addView(card)
                 }
+
+                if (filtered.isEmpty()) {
+                    val empty = TextView(this@ReceiptActivity).apply {
+                        text = "No transactions found"
+                        textSize = 14f
+                        gravity = Gravity.CENTER
+                        setPadding(0, 32, 0, 0)
+                    }
+                    container.addView(empty)
+                }
             }
         }
     }
 
     private fun openCamera() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERMISSION_CODE
-            )
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
         } else {
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
             cameraLauncher.launch(intent)
@@ -228,24 +325,15 @@ class ReceiptActivity : AppCompatActivity() {
     }
 
     private fun openGallery() {
-        val intent = Intent(
-            Intent.ACTION_PICK,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        )
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         galleryLauncher.launch(intent)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
         if (requestCode == CAMERA_PERMISSION_CODE &&
             grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
+            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             openCamera()
         } else {
             Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()

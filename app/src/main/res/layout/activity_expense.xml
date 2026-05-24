@@ -25,7 +25,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/title_expenses"
+            android:text="Expenses"
             android:textSize="20sp"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
@@ -43,6 +43,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Expense / Income toggle -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -51,21 +52,27 @@
                 android:orientation="horizontal"
                 android:layout_marginBottom="16dp">
 
+                <!-- Expense button: always red with white text -->
                 <Button
                     android:id="@+id/btnExpense"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/label_expense"
+                    android:text="Expense"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#E53935"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
 
+                <!-- Income button: outlined, white text -->
                 <Button
                     android:id="@+id/btnIncome"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/label_income"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                    android:text="Income"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#9E9E9E"
+                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
             </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -93,12 +100,31 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"/>
 
-            <Spinner
-                android:id="@+id/spCategory"
+            <!-- Category spinner + Create Category button side by side -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/card_background"
-                android:contentDescription="@string/desc_category_spinner"/>
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Spinner
+                    android:id="@+id/spCategory"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/card_background"
+                    android:contentDescription="@string/desc_category_spinner"/>
+
+                <Button
+                    android:id="@+id/btnCreateCategory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="+ New"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#00C896"
+                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -244,6 +270,7 @@
                     android:layout_weight="1"
                     android:text="@string/quick_coffee"/>
             </LinearLayout>
+
             <Button
                 android:id="@+id/btnSave"
                 android:layout_width="match_parent"
