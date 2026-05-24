@@ -9,19 +9,19 @@ import androidx.room.Query
 interface IncomeDao {
 
     @Insert
-    suspend fun insert(income: com.smartspend.data.entity.Income)
+    suspend fun insert(income: com.smartspend.data.entity.Income): Long
 
-    @Query("SELECT * FROM income ORDER BY date DESC")
-    suspend fun getAllIncome(): List<com.smartspend.data.entity.Income>
+    @Query("SELECT * FROM income WHERE userId = :userId ORDER BY date DESC")
+    suspend fun getAllIncome(userId: String): List<com.smartspend.data.entity.Income>
 
     @Delete
     suspend fun delete(income: com.smartspend.data.entity.Income)
 
-    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM income WHERE date >= :startDate AND date <= :endDate")
-    suspend fun getTotalIncomeByDateRange(startDate: String, endDate: String): Double
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM income WHERE userId = :userId AND date >= :startDate AND date <= :endDate")
+    suspend fun getTotalIncomeByDateRange(userId: String, startDate: String, endDate: String): Double
 
-    @Query("SELECT source, SUM(amount) as total FROM income WHERE date BETWEEN :startDate AND :endDate GROUP BY source")
-    suspend fun getIncomeBySource(startDate: String, endDate: String): List<SourceSummary>
+    @Query("SELECT source, SUM(amount) as total FROM income WHERE userId = :userId AND date BETWEEN :startDate AND :endDate GROUP BY source")
+    suspend fun getIncomeBySource(userId: String, startDate: String, endDate: String): List<SourceSummary>
 }
 
 data class SourceSummary(

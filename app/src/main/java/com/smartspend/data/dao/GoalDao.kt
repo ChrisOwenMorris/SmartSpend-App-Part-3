@@ -11,7 +11,7 @@ import com.smartspend.data.entity.Goal
 interface GoalDao {
 
     @Insert
-    suspend fun insert(goal: Goal)
+    suspend fun insert(goal: Goal): Long
 
     @Update
     suspend fun update(goal: Goal)
@@ -19,14 +19,14 @@ interface GoalDao {
     @Delete
     suspend fun delete(goal: Goal)
 
-    @Query("SELECT * FROM goals ORDER BY goalId ASC")
-    suspend fun getAllGoals(): List<Goal>
+    @Query("SELECT * FROM goals WHERE userId = :userId ORDER BY goalId ASC")
+    suspend fun getAllGoals(userId: String): List<Goal>
 
-    @Query("SELECT * FROM goals WHERE isCompleted = 0 ORDER BY goalId ASC LIMIT 1")
-    suspend fun getFeaturedGoal(): Goal?
+    @Query("SELECT * FROM goals WHERE userId = :userId AND isCompleted = 0 ORDER BY goalId ASC LIMIT 1")
+    suspend fun getFeaturedGoal(userId: String): Goal?
 
-    @Query("SELECT * FROM goals WHERE isCompleted = 0 ORDER BY goalId ASC")
-    suspend fun getActiveGoals(): List<Goal>
+    @Query("SELECT * FROM goals WHERE userId = :userId AND isCompleted = 0 ORDER BY goalId ASC")
+    suspend fun getActiveGoals(userId: String): List<Goal>
 
     @Query("UPDATE goals SET currentAmount = :amount WHERE goalId = :goalId")
     suspend fun updateCurrentAmount(goalId: Int, amount: Double)

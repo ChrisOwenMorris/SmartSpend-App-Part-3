@@ -4,20 +4,22 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.smartspend.data.dao.CategoryDao
 import com.smartspend.data.dao.ExpenseDao
-import com.smartspend.data.dao.UserDao
 import com.smartspend.data.dao.GoalDao
 import com.smartspend.data.dao.IncomeDao
+import com.smartspend.data.dao.SpendingGoalDao
+import com.smartspend.data.dao.UserDao
 import com.smartspend.data.entity.Category
 import com.smartspend.data.entity.Expense
 import com.smartspend.data.entity.Goal
-import com.smartspend.data.entity.User
 import com.smartspend.data.entity.Income
+import com.smartspend.data.entity.SpendingGoal
+import com.smartspend.data.entity.User
 
-// Fixed the syntax error in the annotation below
 @Database(
-    entities = [Expense::class, Category::class, Income::class, User::class, Goal::class],
-    version = 2,
+    entities = [Expense::class, Category::class, Income::class, User::class, Goal::class, SpendingGoal::class],
+    version = 4,
     exportSchema = false
 )
 abstract class SmartSpendDatabase : RoomDatabase() {
@@ -26,6 +28,8 @@ abstract class SmartSpendDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun goalDao(): GoalDao
     abstract fun incomeDao(): IncomeDao
+    abstract fun categoryDao(): CategoryDao
+    abstract fun spendingGoalDao(): SpendingGoalDao
 
     companion object {
         @Volatile
