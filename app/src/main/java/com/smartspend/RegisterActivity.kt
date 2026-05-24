@@ -9,6 +9,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
+import com.smartspend.data.SessionManager
 import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {
@@ -48,6 +50,9 @@ class RegisterActivity : AppCompatActivity() {
 
                         if (success) {
                             Log.d("RegisterActivity", "Registration successful for: $email")
+                            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            SessionManager.setUserId(uid)
+                            Log.d("RegisterActivity", "Session started for: $uid")
                             Toast.makeText(
                                 this@RegisterActivity,
                                 "Account created successfully",

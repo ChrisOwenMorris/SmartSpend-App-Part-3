@@ -2,6 +2,7 @@ package com.smartspend
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -15,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -177,44 +179,43 @@ class DashboardActivity : AppCompatActivity() {
     private fun loadDashboardData() {
         lifecycleScope.launch {
             try {
-                val allTransactions = db.expenseDao().getAllExpenses()
+                val cal = Calendar.getInstance()
+                val currentMonth = cal.get(Calendar.MONTH)
+                val currentYear = cal.get(Calendar.YEAR)
 
-                //Separate incomes from expenses
+                // Current-month date range for totals
+                val startDate = "%04d-%02d-01".format(currentYear, currentMonth + 1)
+                val endDate = "%04d-%02d-%02d".format(
+                    currentYear, currentMonth + 1, cal.get(Calendar.DAY_OF_MONTH)
+                )
 
-                val expenses = allTransactions.filter { transaction ->
-                    transaction.description != "Income" &&
-                            !transaction.description.startsWith("+")
-                }
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                Log.d("Dashboard", "Loading data for user: $userId")
 
-                val incomes = allTransactions.filter { transaction ->
-                    transaction.description == "Income" ||
-                            transaction.description.startsWith("+")
-                }
+                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
+                val totalIncome = db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
+                Log.d("DashboardActivity", "Totals — expenses: $totalExpenses, income: $totalIncome (range: $startDate to $endDate)")
 
-                val totalExpenses = expenses.sumOf { it.amount }
-                val totalIncome = incomes.sumOf { it.amount }
+                // All expense-table rows for the recent list and count
+                val allTransactions = db.expenseDao().getAllExpenses(userId)
+                Log.d("Dashboard", "Expense count: ${allTransactions.size}")
+                Log.d("Dashboard", "Total spent: $totalExpenses")
                 val count = allTransactions.size
+                val sorted = allTransactions.sortedByDescending { it.date }
+                val recentTransactions = sorted.take(5)
 
                 // Get budget for current month
                 val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
-                val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
                 val savedBudget = prefs.getFloat(
                     "monthly_budget_$currentMonth",
                     prefs.getFloat("monthly_budget", 0f)
                 ).toDouble()
 
-                val goal = db.goalDao().getFeaturedGoal()
-                val budget = if (savedBudget > 0) savedBudget
-                else (goal?.targetAmount ?: 0.0)
-
-                val remaining = budget - totalExpenses
+                val budget = if (savedBudget > 0) savedBudget else 0.0
+                val remaining = if (budget > 0) budget - totalExpenses else 0.0
                 val progress = if (budget > 0) {
                     ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100)
                 } else 0
-
-                //Combine all transactions for the recent list
-
-                val recentTransactions = allTransactions.takeLast(5).reversed()
 
                 runOnUiThread {
                     findViewById<TextView>(R.id.tvTotalBudget)?.text =
@@ -229,7 +230,10 @@ class DashboardActivity : AppCompatActivity() {
                     findViewById<TextView>(R.id.tvTransactionCount)?.text =
                         getString(R.string.transaction_count, count)
 
-                    // Show income total separately in green
+                    val latestDesc = sorted.firstOrNull()?.description ?: "None"
+                    findViewById<TextView>(R.id.tvLatestExpense)?.text = "Latest: $latestDesc"
+
+                    // Show income total from the proper income table
                     findViewById<TextView>(R.id.tvTotalIncome)?.apply {
                         text = getString(R.string.amount_format, totalIncome)
                         setTextColor(getColor(R.color.status_success))
@@ -246,13 +250,12 @@ class DashboardActivity : AppCompatActivity() {
                             }
                         )
 
-                    // Pass both income flag and transactions to adapter
-                    // so adapter can colour incomes green and expenses red
                     val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
                     rvRecentExpenses.adapter = RecentExpensesAdapter(recentTransactions)
                 }
 
             } catch (e: Exception) {
+                Log.e("DashboardActivity", "Error loading dashboard data: ${e.message}")
                 e.printStackTrace()
             }
         }

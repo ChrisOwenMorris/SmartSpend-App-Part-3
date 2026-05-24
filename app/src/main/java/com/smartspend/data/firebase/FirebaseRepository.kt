@@ -8,6 +8,7 @@ import com.smartspend.data.entity.Expense
 import com.smartspend.data.entity.Category
 import com.smartspend.data.entity.Goal
 import com.smartspend.data.entity.Income
+import com.smartspend.data.entity.SpendingGoal
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -89,7 +90,7 @@ class FirebaseRepository {
      * Save a single expense to Firestore under the current user's expenses subcollection.
      * Path: users/{userId}/expenses/{expenseId}
      */
-    suspend fun saveExpense(expense: Expense): Boolean {
+    suspend fun saveExpense(expense: Expense, categoryName: String = ""): Boolean {
         val uid = currentUserId ?: return false
         return try {
             val expenseMap = hashMapOf(
@@ -99,7 +100,7 @@ class FirebaseRepository {
                 "date" to expense.date,
                 "startTime" to expense.startTime,
                 "endTime" to expense.endTime,
-                "categoryId" to expense.categoryId,
+                "category" to categoryName,
                 "receiptPath" to (expense.receiptPath ?: ""),
                 "syncedAt" to System.currentTimeMillis()
             )
@@ -217,6 +218,36 @@ class FirebaseRepository {
     }
 
     // ─── INCOME ────────────────────────────────────────────────────────────────
+
+    // ─── SPENDING GOALS ────────────────────────────────────────────────────────
+
+    /**
+     * Save a spending goal (min/max monthly) to Firestore.
+     * Path: users/{userId}/spending_goals/{month}
+     */
+    suspend fun saveSpendingGoal(goal: SpendingGoal): Boolean {
+        val uid = currentUserId ?: return false
+        return try {
+            val goalMap = hashMapOf(
+                "id" to goal.id,
+                "minMonthlySpend" to goal.minMonthlySpend,
+                "maxMonthlySpend" to goal.maxMonthlySpend,
+                "month" to goal.month,
+                "syncedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users")
+                .document(uid)
+                .collection("spending_goals")
+                .document(goal.month)
+                .set(goalMap)
+                .await()
+            Log.d("FirebaseRepo", "Spending goal saved for: ${goal.month}")
+            true
+        } catch (e: Exception) {
+            Log.e("FirebaseRepo", "Failed to save spending goal: ${e.message}")
+            false
+        }
+    }
 
     /**
      * Save an income entry to Firestore.

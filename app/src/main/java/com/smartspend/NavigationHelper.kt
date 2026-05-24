@@ -2,8 +2,14 @@ package com.smartspend
 
 import android.app.Activity
 import android.content.Intent
+import android.util.Log
 import android.view.View
 import android.widget.PopupMenu
+import com.google.firebase.auth.FirebaseAuth
+import com.smartspend.data.SessionManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object NavigationHelper {
 
@@ -31,6 +37,13 @@ object NavigationHelper {
                     "Settings" -> openScreen(activity, SettingsActivity::class.java)
 
                     "Logout" -> {
+                        val db = (activity.application as SmartSpendApp).database
+                        CoroutineScope(Dispatchers.IO).launch {
+                            db.clearAllTables()
+                            Log.d("Logout", "All local Room data cleared")
+                        }
+                        SessionManager.clearSession()
+                        FirebaseAuth.getInstance().signOut()
                         val intent = Intent(activity, LoginActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         activity.startActivity(intent)

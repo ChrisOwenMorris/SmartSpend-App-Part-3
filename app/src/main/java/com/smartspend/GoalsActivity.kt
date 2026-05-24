@@ -3,6 +3,7 @@ package com.smartspend
 import android.app.DatePickerDialog
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,7 +14,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.data.entity.Goal
+import com.smartspend.data.entity.SpendingGoal
+import com.smartspend.data.firebase.FirebaseRepository
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import androidx.core.net.toUri
@@ -48,7 +52,13 @@ class GoalsActivity : AppCompatActivity() {
             findViewById<ImageView>(R.id.ivFeaturedGoalImage).setImageURI(it)
             featuredGoal?.let { goal ->
                 lifecycleScope.launch {
-                    db.goalDao().update(goal.copy(imagePath = it.toString()))
+                    val updatedGoal = goal.copy(imagePath = it.toString())
+                    db.goalDao().update(updatedGoal)
+
+                    // Sync updated image path to Firebase
+                    FirebaseRepository().saveGoal(updatedGoal)
+                    Log.d("GoalsActivity", "Goal image path synced to Firebase: ${updatedGoal.goalId}")
+
                     loadFeaturedGoal()
                 }
             }
@@ -70,6 +80,7 @@ class GoalsActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupButtons()
+        setupSpendingGoalsSection()
         loadAllGoals()
         loadFeaturedGoal()
     }
@@ -120,7 +131,9 @@ class GoalsActivity : AppCompatActivity() {
 
     private fun loadFeaturedGoal() {
         lifecycleScope.launch {
-            val goal = db.goalDao().getFeaturedGoal()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            Log.d("GoalsActivity", "Loading featured goal for userId: $userId")
+            val goal = db.goalDao().getFeaturedGoal(userId)
             featuredGoal = goal
 
             if (goal != null) {
@@ -178,7 +191,9 @@ class GoalsActivity : AppCompatActivity() {
 
     private fun loadAllGoals() {
         lifecycleScope.launch {
-            val goals = db.goalDao().getActiveGoals()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            Log.d("GoalsActivity", "Loading all goals for userId: $userId")
+            val goals = db.goalDao().getActiveGoals(userId)
             runOnUiThread {
                 goalsAdapter.updateGoals(goals)
             }
@@ -212,14 +227,21 @@ class GoalsActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            db.goalDao().insert(
-                Goal(
-                    goalName = name,
-                    targetAmount = amount,
-                    targetDate = date,
-                    imagePath = selectedImageUri?.toString()
-                )
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            Log.d("GoalsActivity", "Creating goal for userId: $userId")
+            val newGoal = Goal(
+                userId = userId,
+                goalName = name,
+                targetAmount = amount,
+                targetDate = date,
+                imagePath = selectedImageUri?.toString()
             )
+            val newId = db.goalDao().insert(newGoal)
+            val savedGoal = newGoal.copy(goalId = newId.toInt())
+
+            // Sync to Firebase with the real Room-generated ID
+            FirebaseRepository().saveGoal(savedGoal)
+
             runOnUiThread {
                 Toast.makeText(this@GoalsActivity, "Goal created", Toast.LENGTH_SHORT).show()
                 // Reset Form
@@ -257,19 +279,7 @@ class GoalsActivity : AppCompatActivity() {
                     lifecycleScope.launch {
                         val newAmount = goal.currentAmount + amount
                         db.goalDao().updateCurrentAmount(goal.goalId, newAmount)
-
-                        // Register as expense (linking with Expense entity)
-                        db.expenseDao().insert(
-                            com.smartspend.data.entity.Expense(
-                                amount = amount,
-                                description = "Savings: ${goal.goalName}",
-                                date = java.time.LocalDate.now().toString(),
-                                startTime = "00:00",
-                                endTime = "00:00",
-                                categoryId = 0,
-                                receiptPath = null
-                            )
-                        )
+                        Log.d("GoalsActivity", "Savings added to '${goal.goalName}': +$amount → total $newAmount")
 
                         runOnUiThread {
                             Toast.makeText(this@GoalsActivity, "Savings added", Toast.LENGTH_SHORT).show()
@@ -287,7 +297,7 @@ class GoalsActivity : AppCompatActivity() {
 
     private fun showSelectGoalToUpdateDialog() {
         lifecycleScope.launch {
-            val goals = db.goalDao().getActiveGoals()
+            val goals = db.goalDao().getActiveGoals(FirebaseAuth.getInstance().currentUser?.uid ?: "")
             if (goals.isEmpty()) {
                 runOnUiThread {
                     Toast.makeText(this@GoalsActivity, "No goals yet", Toast.LENGTH_SHORT).show()
@@ -327,6 +337,12 @@ class GoalsActivity : AppCompatActivity() {
                     lifecycleScope.launch {
                         val newAmount = goal.currentAmount + amount
                         db.goalDao().updateCurrentAmount(goal.goalId, newAmount)
+
+                        // Sync updated currentAmount to Firebase
+                        val updatedGoal = goal.copy(currentAmount = newAmount)
+                        FirebaseRepository().saveGoal(updatedGoal)
+                        Log.d("GoalsActivity", "Goal current amount synced to Firebase: $newAmount")
+
                         runOnUiThread {
                             Toast.makeText(this@GoalsActivity, "Goal updated", Toast.LENGTH_SHORT).show()
                         }
@@ -348,6 +364,72 @@ class GoalsActivity : AppCompatActivity() {
                 .setMessage("You've reached your goal: ${featuredGoal?.goalName ?: ""}")
                 .setPositiveButton("Awesome!", null)
                 .show()
+        }
+    }
+
+    private fun setupSpendingGoalsSection() {
+        val etMinSpend = findViewById<EditText>(R.id.etMinMonthlySpend)
+        val etMaxSpend = findViewById<EditText>(R.id.etMaxMonthlySpend)
+        val btnSave = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSaveSpendingGoals)
+
+        btnSave.setOnClickListener {
+            val minStr = etMinSpend.text.toString().trim()
+            val maxStr = etMaxSpend.text.toString().trim()
+
+            when {
+                minStr.isEmpty() -> {
+                    Toast.makeText(this, "Enter minimum monthly spend", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                maxStr.isEmpty() -> {
+                    Toast.makeText(this, "Enter maximum monthly spend", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+            }
+
+            val min = minStr.toDoubleOrNull()
+            val max = maxStr.toDoubleOrNull()
+
+            when {
+                min == null || min < 0 -> {
+                    Toast.makeText(this, "Enter a valid minimum amount", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                max == null || max <= 0 -> {
+                    Toast.makeText(this, "Enter a valid maximum amount", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                min >= max -> {
+                    Toast.makeText(this, "Minimum must be less than maximum", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+            }
+
+            val month = java.time.LocalDate.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+
+            lifecycleScope.launch {
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                Log.d("GoalsActivity", "Saving spending goal for userId: $userId")
+                val spendingGoal = SpendingGoal(
+                    userId = userId,
+                    minMonthlySpend = min!!,
+                    maxMonthlySpend = max!!,
+                    month = month
+                )
+                val newId = db.spendingGoalDao().insert(spendingGoal)
+                val savedGoal = spendingGoal.copy(id = newId.toInt())
+                Log.d("GoalsActivity", "Spending goals saved: min=$min max=$max month=$month")
+
+                // Sync to Firebase
+                FirebaseRepository().saveSpendingGoal(savedGoal)
+
+                runOnUiThread {
+                    Toast.makeText(this@GoalsActivity, "Spending goals saved", Toast.LENGTH_SHORT).show()
+                    etMinSpend.text?.clear()
+                    etMaxSpend.text?.clear()
+                }
+            }
         }
     }
 

@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
@@ -95,7 +96,7 @@ class ReceiptActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
 
-            val expenses = db.expenseDao().getAllExpenses()
+            val expenses = db.expenseDao().getAllExpenses(FirebaseAuth.getInstance().currentUser?.uid ?: "")
 
             runOnUiThread {
 

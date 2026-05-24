@@ -24,8 +24,15 @@ class RecentExpensesAdapter(private val expenses: List<Expense>) :
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val expense = expenses[position]
+        val isIncome = expense.description == "Income" || expense.description.startsWith("+")
         holder.tvDescription.text = expense.description
-        holder.tvAmount.text = "R %.2f".format(expense.amount)
+        if (isIncome) {
+            holder.tvAmount.text = "+R %.2f".format(expense.amount)
+            holder.tvAmount.setTextColor(android.graphics.Color.parseColor("#2E7D32"))
+        } else {
+            holder.tvAmount.text = "-R %.2f".format(expense.amount)
+            holder.tvAmount.setTextColor(android.graphics.Color.parseColor("#C62828"))
+        }
         holder.tvDate.text = expense.date
     }
 
