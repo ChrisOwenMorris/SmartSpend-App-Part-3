@@ -152,7 +152,6 @@ class DashboardActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
 
-
                 val editor = prefs.edit()
                 editor.putFloat("monthly_budget_$monthIndex", budget)
                 val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
@@ -184,7 +183,6 @@ class DashboardActivity : AppCompatActivity() {
                     currentYear, currentMonth + 1, cal.get(Calendar.DAY_OF_MONTH)
                 )
 
-                //  Firebase import path
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 Log.d("Dashboard", "Loading data for user: $userId")
 
@@ -193,7 +191,6 @@ class DashboardActivity : AppCompatActivity() {
                 val totalIncome = db.incomeDao()
                     .getTotalIncomeByDateRange(userId, startDate, endDate)
 
-                // getAllExpenses passes userId
                 val allTransactions = db.expenseDao().getAllExpenses(userId)
                 val sorted = allTransactions.sortedByDescending { it.date }
                 val recentTransactions = sorted.take(5)
@@ -211,15 +208,8 @@ class DashboardActivity : AppCompatActivity() {
                     ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100)
                 } else 0
 
-                // minGoal and maxGoal come from SpendingGoal entity
-
-                val currentMonthStr = "%04d-%02d".format(currentYear, currentMonth + 1)
-                val spendingGoal = db.spendingGoalDao()
-                    .getSpendingGoalForMonth(userId, currentMonthStr)
-                val minGoal = spendingGoal?.minMonthlySpend ?: 0.0
-                val maxGoal = spendingGoal?.maxMonthlySpend ?: 0.0
-
                 runOnUiThread {
+
                     findViewById<TextView>(R.id.tvTotalBudget)?.text =
                         getString(R.string.amount_format, budget.toFloat())
 
@@ -232,7 +222,6 @@ class DashboardActivity : AppCompatActivity() {
                     findViewById<TextView>(R.id.tvTransactionCount)?.text =
                         getString(R.string.transaction_count, count)
 
-                    // FIX — latest expense uses string resource placeholder
                     val latestDesc = sorted.firstOrNull()?.description
                         ?: getString(R.string.none_label)
                     findViewById<TextView>(R.id.tvLatestExpense)?.text =
@@ -242,20 +231,6 @@ class DashboardActivity : AppCompatActivity() {
                         text = getString(R.string.amount_format, totalIncome.toFloat())
                         setTextColor(getColor(R.color.status_success))
                     }
-
-                    // min and max goals use string resource placeholders
-
-                    findViewById<TextView>(R.id.tvMinGoal)?.text =
-                        getString(
-                            R.string.min_goal_format,
-                            getString(R.string.amount_format, minGoal.toFloat())
-                        )
-
-                    findViewById<TextView>(R.id.tvMaxGoal)?.text =
-                        getString(
-                            R.string.max_goal_format,
-                            getString(R.string.amount_format, maxGoal.toFloat())
-                        )
 
                     val progressBar = findViewById<ProgressBar>(R.id.progressBudget)
                     progressBar?.progress = progress
