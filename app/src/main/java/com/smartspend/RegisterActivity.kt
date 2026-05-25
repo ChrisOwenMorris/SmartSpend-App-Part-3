@@ -2,9 +2,11 @@ package com.smartspend
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +27,34 @@ class RegisterActivity : AppCompatActivity() {
         val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
         val btnRegister = findViewById<Button>(R.id.btnRegister)
         val tvLogin = findViewById<TextView>(R.id.tvLogin)
+        val ibTogglePassword = findViewById<ImageButton>(R.id.ibTogglePassword)
+        val ibToggleConfirmPassword = findViewById<ImageButton>(R.id.ibToggleConfirmPassword)
+
+        var isPasswordVisible = false
+        ibTogglePassword.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            if (isPasswordVisible) {
+                etPassword.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                ibTogglePassword.setImageResource(android.R.drawable.ic_menu_view)
+            } else {
+                etPassword.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                ibTogglePassword.setImageResource(android.R.drawable.ic_secure)
+            }
+            etPassword.setSelection(etPassword.text.length)
+        }
+
+        var isConfirmPasswordVisible = false
+        ibToggleConfirmPassword.setOnClickListener {
+            isConfirmPasswordVisible = !isConfirmPasswordVisible
+            if (isConfirmPasswordVisible) {
+                etConfirmPassword.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                ibToggleConfirmPassword.setImageResource(android.R.drawable.ic_menu_view)
+            } else {
+                etConfirmPassword.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                ibToggleConfirmPassword.setImageResource(android.R.drawable.ic_secure)
+            }
+            etConfirmPassword.setSelection(etConfirmPassword.text.length)
+        }
 
         btnRegister.setOnClickListener {
             val name = etName.text.toString().trim()

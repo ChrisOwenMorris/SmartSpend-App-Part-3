@@ -13,7 +13,7 @@ interface SpendingGoalDao {
     suspend fun insert(goal: SpendingGoal): Long
 
     @Query("SELECT * FROM spending_goals WHERE userId = :userId AND month = :month LIMIT 1")
-    suspend fun getGoalForMonth(userId: String, month: String): SpendingGoal?
+    suspend fun getSpendingGoalForMonth(userId: String, month: String): SpendingGoal?
 
     @Query("SELECT * FROM spending_goals WHERE userId = :userId ORDER BY month DESC LIMIT 1")
     suspend fun getLatestGoal(userId: String): SpendingGoal?

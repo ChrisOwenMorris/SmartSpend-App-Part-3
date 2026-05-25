@@ -2,6 +2,8 @@
 
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/gradient_header"
@@ -127,20 +129,37 @@
                 android:layout_marginTop="14dp"
                 android:layout_marginBottom="6dp" />
 
-            <EditText
-                android:id="@+id/etPassword"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:background="@drawable/rounded_input_bg"
-                android:hint="@string/hint_password"
-                android:textColorHint="@color/ss_text_hint"
-                android:inputType="textPassword"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textColor="@color/ss_text_primary"
-                android:textSize="14sp"
-                android:singleLine="true"
-                android:imeOptions="actionNext" />
+                android:layout_height="52dp">
+
+                <EditText
+                    android:id="@+id/etPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/rounded_input_bg"
+                    android:hint="@string/hint_password"
+                    android:textColorHint="@color/ss_text_hint"
+                    android:inputType="textPassword"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="52dp"
+                    android:textColor="@color/ss_text_primary"
+                    android:textSize="14sp"
+                    android:singleLine="true"
+                    android:imeOptions="actionNext" />
+
+                <ImageButton
+                    android:id="@+id/ibTogglePassword"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Toggle password visibility"
+                    android:src="@android:drawable/ic_menu_view"
+                    app:tint="@color/ss_text_secondary"
+                    tools:ignore="TouchTargetSizeCheck" />
+            </FrameLayout>
 
             <!-- Confirm Password -->
             <TextView
@@ -153,20 +172,37 @@
                 android:layout_marginTop="14dp"
                 android:layout_marginBottom="6dp" />
 
-            <EditText
-                android:id="@+id/etConfirmPassword"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:background="@drawable/rounded_input_bg"
-                android:hint="@string/hint_confirm_password"
-                android:textColorHint="@color/ss_text_hint"
-                android:inputType="textPassword"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textColor="@color/ss_text_primary"
-                android:textSize="14sp"
-                android:singleLine="true"
-                android:imeOptions="actionDone" />
+                android:layout_height="52dp">
+
+                <EditText
+                    android:id="@+id/etConfirmPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/rounded_input_bg"
+                    android:hint="@string/hint_confirm_password"
+                    android:textColorHint="@color/ss_text_hint"
+                    android:inputType="textPassword"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="52dp"
+                    android:textColor="@color/ss_text_primary"
+                    android:textSize="14sp"
+                    android:singleLine="true"
+                    android:imeOptions="actionDone" />
+
+                <ImageButton
+                    android:id="@+id/ibToggleConfirmPassword"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Toggle confirm password visibility"
+                    android:src="@android:drawable/ic_menu_view"
+                    app:tint="@color/ss_text_secondary"
+                    tools:ignore="TouchTargetSizeCheck" />
+            </FrameLayout>
 
             <!-- Register button -->
             <Button
