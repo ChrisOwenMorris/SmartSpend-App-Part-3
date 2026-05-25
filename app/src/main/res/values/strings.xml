@@ -183,4 +183,22 @@
     <string name="default_transaction_count">Transactions: 0</string>
     <string name="recent_transactions">Recent Transactions</string>
     <string name="hamburger_menu">☰</string>
+    <string name="savings_goals_label">Savings Goals</string>
+    <string name="min_goal_default">Min Goal: R 0.00</string>
+    <string name="max_goal_default">Max Goal: R 0.00</string>
+    <string name="min_spend">MIN SPEND</string>
+    <string name="max_spend">MAX SPEND</string>
+    <string name="min_goal_hint">Minimum monthly target</string>
+    <string name="max_goal_hint">Maximum monthly limit</string>
+    <string name="monthly_spend_status">Monthly spend status</string>
+    <string name="on_track">✓ On Track</string>
+    <string name="over_limit">✗ Over Limit</string>
+    <string name="near_limit">Near Limit</string>
+    <string name="latest_format">Latest: %1$s</string>
+    <string name="none_label">None</string>
+    <string name="min_goal_format">Min Goal: %1$s</string>
+    <string name="max_goal_format">Max Goal: %1$s</string>
+    <string name="budget_for_month">Budget for %1$s</string>
+    <string name="budget_set_for_month">Budget set for %1$s!</string>
+    <string name="budget_already_set_message_format" formatted="false">A budget of R%.2f is already set for %s. If you made a mistake, please add the correction as an Income entry. Do you still want to update this budget?</string>
 </resources>

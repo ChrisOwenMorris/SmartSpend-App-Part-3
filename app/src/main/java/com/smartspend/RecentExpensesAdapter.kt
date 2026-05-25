@@ -15,6 +15,11 @@ class RecentExpensesAdapter(private val expenses: List<Expense>) :
         val tvAmount: TextView = view.findViewById(R.id.tvExpenseAmount)
         val tvDate: TextView = view.findViewById(R.id.tvExpenseDate)
     }
+    fun updateData(newList: List<Expense>) {
+        (expenses as MutableList).clear()
+        (expenses as MutableList).addAll(newList)
+        notifyDataSetChanged()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)

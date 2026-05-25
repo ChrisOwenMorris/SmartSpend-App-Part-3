@@ -1,6 +1,7 @@
 package com.smartspend
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -26,6 +27,8 @@ class DashboardActivity : AppCompatActivity() {
         (application as SmartSpendApp).database
     }
 
+    private lateinit var recentExpensesAdapter: RecentExpensesAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
@@ -35,6 +38,9 @@ class DashboardActivity : AppCompatActivity() {
         val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
         rvRecentExpenses.layoutManager = LinearLayoutManager(this)
 
+        recentExpensesAdapter = RecentExpensesAdapter(emptyList())
+        rvRecentExpenses.adapter = recentExpensesAdapter
+
         findViewById<Button>(R.id.btnQuickAddExpense).setOnClickListener {
             startActivity(Intent(this, ExpenseActivity::class.java))
         }
@@ -42,8 +48,6 @@ class DashboardActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSetBudget).setOnClickListener {
             showSetBudgetDialog()
         }
-
-        loadDashboardData()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -65,15 +69,12 @@ class DashboardActivity : AppCompatActivity() {
     private fun showSetBudgetDialog() {
         val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
 
-        //Month selection for budget
-        // Build list of all 12 months for user to pick from
         val months = arrayOf(
             "January", "February", "March", "April",
             "May", "June", "July", "August",
             "September", "October", "November", "December"
         )
 
-        // Default to current month
         val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
         var selectedMonth = currentMonth
 
@@ -83,19 +84,18 @@ class DashboardActivity : AppCompatActivity() {
                 selectedMonth = which
             }
             .setPositiveButton(getString(R.string.save)) { _, _ ->
-                //Check if budget already set for selected month
                 val budgetKey = "monthly_budget_$selectedMonth"
                 val existingBudget = prefs.getFloat(budgetKey, 0f)
 
                 if (existingBudget > 0f) {
-                    // Budget already exists for this month — warn user
                     AlertDialog.Builder(this)
                         .setTitle(getString(R.string.budget_already_set_title))
                         .setMessage(
-                            "A budget of R%.2f is already set for %s. ".format(
-                                existingBudget, months[selectedMonth]
-                            ) + "If you made a mistake, please add the correction as an Income entry. " +
-                                    "Do you still want to update this budget?"
+                            getString(
+                                R.string.budget_already_set_message_format,
+                                existingBudget,
+                                months[selectedMonth]
+                            )
                         )
                         .setPositiveButton(getString(R.string.update_anyway)) { _, _ ->
                             openBudgetAmountDialog(prefs, selectedMonth, months[selectedMonth])
@@ -111,7 +111,7 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun openBudgetAmountDialog(
-        prefs: android.content.SharedPreferences,
+        prefs: SharedPreferences,
         monthIndex: Int,
         monthName: String
     ) {
@@ -121,14 +121,13 @@ class DashboardActivity : AppCompatActivity() {
             hint = getString(R.string.budget_hint)
         }
 
-        // padding around the input field
         val container = LinearLayout(this).apply {
             setPadding(48, 16, 48, 0)
             addView(input)
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Budget for $monthName")
+            .setTitle(getString(R.string.budget_for_month, monthName))
             .setMessage(getString(R.string.budget_dialog_message))
             .setView(container)
             .setPositiveButton(getString(R.string.save)) { _, _ ->
@@ -153,22 +152,19 @@ class DashboardActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
 
-                // Save budget under the specific month key
 
-                prefs.edit().apply {
-                    putFloat("monthly_budget_$monthIndex", budget)
-                    // Also save as current budget if it matches current month
-                    val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
-                    if (monthIndex == currentMonth) {
-                        putFloat("monthly_budget", budget)
-                    }
-                    apply()
+                val editor = prefs.edit()
+                editor.putFloat("monthly_budget_$monthIndex", budget)
+                val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+                if (monthIndex == currentMonth) {
+                    editor.putFloat("monthly_budget", budget)
                 }
+                editor.apply()
 
                 loadDashboardData()
                 Toast.makeText(
                     this,
-                    "Budget set for $monthName!",
+                    getString(R.string.budget_set_for_month, monthName),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -183,28 +179,26 @@ class DashboardActivity : AppCompatActivity() {
                 val currentMonth = cal.get(Calendar.MONTH)
                 val currentYear = cal.get(Calendar.YEAR)
 
-                // Current-month date range for totals
                 val startDate = "%04d-%02d-01".format(currentYear, currentMonth + 1)
                 val endDate = "%04d-%02d-%02d".format(
                     currentYear, currentMonth + 1, cal.get(Calendar.DAY_OF_MONTH)
                 )
 
+                //  Firebase import path
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 Log.d("Dashboard", "Loading data for user: $userId")
 
-                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
-                val totalIncome = db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
-                Log.d("DashboardActivity", "Totals — expenses: $totalExpenses, income: $totalIncome (range: $startDate to $endDate)")
+                val totalExpenses = db.expenseDao()
+                    .getTotalByDateRange(userId, startDate, endDate)
+                val totalIncome = db.incomeDao()
+                    .getTotalIncomeByDateRange(userId, startDate, endDate)
 
-                // All expense-table rows for the recent list and count
+                // getAllExpenses passes userId
                 val allTransactions = db.expenseDao().getAllExpenses(userId)
-                Log.d("Dashboard", "Expense count: ${allTransactions.size}")
-                Log.d("Dashboard", "Total spent: $totalExpenses")
-                val count = allTransactions.size
                 val sorted = allTransactions.sortedByDescending { it.date }
                 val recentTransactions = sorted.take(5)
+                val count = allTransactions.size
 
-                // Get budget for current month
                 val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
                 val savedBudget = prefs.getFloat(
                     "monthly_budget_$currentMonth",
@@ -217,45 +211,70 @@ class DashboardActivity : AppCompatActivity() {
                     ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100)
                 } else 0
 
+                // minGoal and maxGoal come from SpendingGoal entity
+
+                val currentMonthStr = "%04d-%02d".format(currentYear, currentMonth + 1)
+                val spendingGoal = db.spendingGoalDao()
+                    .getSpendingGoalForMonth(userId, currentMonthStr)
+                val minGoal = spendingGoal?.minMonthlySpend ?: 0.0
+                val maxGoal = spendingGoal?.maxMonthlySpend ?: 0.0
+
                 runOnUiThread {
                     findViewById<TextView>(R.id.tvTotalBudget)?.text =
-                        getString(R.string.amount_format, budget)
+                        getString(R.string.amount_format, budget.toFloat())
 
                     findViewById<TextView>(R.id.tvTotalSpent)?.text =
-                        getString(R.string.amount_format, totalExpenses)
+                        getString(R.string.amount_format, totalExpenses.toFloat())
 
                     findViewById<TextView>(R.id.tvRemaining)?.text =
-                        getString(R.string.amount_format, remaining)
+                        getString(R.string.amount_format, remaining.toFloat())
 
                     findViewById<TextView>(R.id.tvTransactionCount)?.text =
                         getString(R.string.transaction_count, count)
 
-                    val latestDesc = sorted.firstOrNull()?.description ?: "None"
-                    findViewById<TextView>(R.id.tvLatestExpense)?.text = "Latest: $latestDesc"
+                    // FIX — latest expense uses string resource placeholder
+                    val latestDesc = sorted.firstOrNull()?.description
+                        ?: getString(R.string.none_label)
+                    findViewById<TextView>(R.id.tvLatestExpense)?.text =
+                        getString(R.string.latest_format, latestDesc)
 
-                    // Show income total from the proper income table
                     findViewById<TextView>(R.id.tvTotalIncome)?.apply {
-                        text = getString(R.string.amount_format, totalIncome)
+                        text = getString(R.string.amount_format, totalIncome.toFloat())
                         setTextColor(getColor(R.color.status_success))
                     }
 
-                    val progressBar = findViewById<ProgressBar>(R.id.progressBudget)
-                    progressBar?.progress = progress
-                    progressBar?.progressTintList =
-                        android.content.res.ColorStateList.valueOf(
-                            when {
-                                progress >= 100 -> getColor(R.color.status_danger)
-                                progress >= 80  -> getColor(R.color.status_warning)
-                                else            -> getColor(R.color.status_success)
-                            }
+                    // min and max goals use string resource placeholders
+
+                    findViewById<TextView>(R.id.tvMinGoal)?.text =
+                        getString(
+                            R.string.min_goal_format,
+                            getString(R.string.amount_format, minGoal.toFloat())
                         )
 
-                    val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
-                    rvRecentExpenses.adapter = RecentExpensesAdapter(recentTransactions)
+                    findViewById<TextView>(R.id.tvMaxGoal)?.text =
+                        getString(
+                            R.string.max_goal_format,
+                            getString(R.string.amount_format, maxGoal.toFloat())
+                        )
+
+                    val progressBar = findViewById<ProgressBar>(R.id.progressBudget)
+                    progressBar?.progress = progress
+                    val progressDrawable = when {
+                        progress >= 100 -> R.drawable.progress_bar_danger
+                        progress >= 80  -> R.drawable.progress_bar_warning
+                        else            -> R.drawable.card_gradient_background
+                    }
+                    progressBar?.progressDrawable =
+                        androidx.core.content.ContextCompat.getDrawable(
+                            this@DashboardActivity,
+                            progressDrawable
+                        )
+
+                    recentExpensesAdapter.updateData(recentTransactions)
                 }
 
             } catch (e: Exception) {
-                Log.e("DashboardActivity", "Error loading dashboard data: ${e.message}")
+                Log.e("DashboardActivity", "Error loading dashboard: ${e.message}")
                 e.printStackTrace()
             }
         }
