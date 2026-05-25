@@ -40,9 +40,9 @@ class ReceiptActivity : AppCompatActivity() {
     private lateinit var btnClearDate: Button
 
     private var imageUri: Uri? = null
-    private var selectedFilterDate: String = ""          // "" means no date filter
+    private var selectedFilterDate: String = ""     // "" means no date filter
     private var loadedCategories: List<Category> = emptyList()
-    private var selectedCategoryFilterId: Int = -1       // -1 means "All"
+    private var selectedCategoryFilterId: Int = -1  // -1 means "All"
 
     companion object {
         private const val CAMERA_PERMISSION_CODE = 300
@@ -86,15 +86,15 @@ class ReceiptActivity : AppCompatActivity() {
 
         NavigationHelper.setupMenu(this)
 
-        previewImage    = findViewById(R.id.ivReceiptPreview)
-        container       = findViewById(R.id.recentReceiptsContainer)
-        searchBox       = findViewById(R.id.etSearchReceipts)
+        previewImage     = findViewById(R.id.ivReceiptPreview)
+        container        = findViewById(R.id.recentReceiptsContainer)
+        searchBox        = findViewById(R.id.etSearchReceipts)
         spFilterCategory = findViewById(R.id.spFilterCategory)
-        etFilterDate    = findViewById(R.id.etFilterDate)
-        btnClearDate    = findViewById(R.id.btnClearDate)
+        etFilterDate     = findViewById(R.id.etFilterDate)
+        btnClearDate     = findViewById(R.id.btnClearDate)
 
-        val btnGallery   = findViewById<Button>(R.id.btnGallery)
-        val cameraCard   = findViewById<LinearLayout>(R.id.topCardContainer)
+        val btnGallery = findViewById<Button>(R.id.btnGallery)
+        val cameraCard = findViewById<LinearLayout>(R.id.topCardContainer)
 
         cameraCard.setOnClickListener { openCamera() }
         btnGallery.setOnClickListener { openGallery() }
@@ -102,14 +102,12 @@ class ReceiptActivity : AppCompatActivity() {
         setupCategoryFilterSpinner()
         setupDateFilter()
 
-        // Search text filter
         searchBox.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) { applyFilters() }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Clear date button
         btnClearDate.setOnClickListener {
             selectedFilterDate = ""
             etFilterDate.setText("")
@@ -130,7 +128,6 @@ class ReceiptActivity : AppCompatActivity() {
             loadedCategories = categories
 
             runOnUiThread {
-                // "All" as the first entry
                 val names = mutableListOf("All Categories") + categories.map { it.categoryName }
                 val adapter = ArrayAdapter(
                     this@ReceiptActivity,
@@ -138,16 +135,31 @@ class ReceiptActivity : AppCompatActivity() {
                     names
                 )
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+
+                // FIX: Set the adapter FIRST with no listener attached.
+                // Android fires onItemSelected automatically during setAdapter() —
+                // since no listener is attached yet, it hits nothing and no load fires.
                 spFilterCategory.adapter = adapter
 
-                spFilterCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, pos: Int, id: Long) {
-                        selectedCategoryFilterId = if (pos == 0) -1 else loadedCategories[pos - 1].categoryId
-                        applyFilters()
-                    }
-                    override fun onNothingSelected(parent: AdapterView<*>?) {}
-                }
+                // FIX: Attach the listener AFTER setAdapter() so only real
+                // user-driven selections trigger applyFilters().
+                spFilterCategory.onItemSelectedListener =
+                    object : AdapterView.OnItemSelectedListener {
+                        override fun onItemSelected(
+                            parent: AdapterView<*>?,
+                            view: android.view.View?,
+                            pos: Int,
+                            id: Long
+                        ) {
+                            selectedCategoryFilterId =
+                                if (pos == 0) -1 else loadedCategories[pos - 1].categoryId
+                            applyFilters()
+                        }
 
+                        override fun onNothingSelected(parent: AdapterView<*>?) {}
+                    }
+
+                // Single clean initial load after everything is wired up.
                 applyFilters()
             }
         }
@@ -205,7 +217,7 @@ class ReceiptActivity : AppCompatActivity() {
                         val matchesDate = date.isEmpty() || expense.date == date
                         matchesSearch && matchesCategory && matchesDate
                     }
-                    .sortedByDescending { it.date }   // most recent first
+                    .sortedByDescending { it.date }
 
                 // Auto-preview the most recent receipt image
                 val mostRecentWithImage = filtered.firstOrNull { !it.receiptPath.isNullOrEmpty() }
@@ -219,7 +231,7 @@ class ReceiptActivity : AppCompatActivity() {
                     previewImage.visibility = ImageView.GONE
                 }
 
-                // List ALL filtered expenses below
+                // List ALL filtered expenses
                 for (expense in filtered) {
                     val card = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -234,7 +246,6 @@ class ReceiptActivity : AppCompatActivity() {
                         setBackgroundResource(R.drawable.card_background)
                     }
 
-                    // Thumbnail — only shown if a receipt image exists
                     val image = ImageView(this@ReceiptActivity).apply {
                         val size = 140
                         layoutParams = LinearLayout.LayoutParams(size, size)
@@ -249,12 +260,14 @@ class ReceiptActivity : AppCompatActivity() {
                                 setImageResource(android.R.drawable.ic_menu_report_image)
                             }
                             setOnClickListener {
-                                val intent = Intent(this@ReceiptActivity, ReceiptPreviewActivity::class.java)
+                                val intent = Intent(
+                                    this@ReceiptActivity,
+                                    ReceiptPreviewActivity::class.java
+                                )
                                 intent.putExtra("receiptPath", expense.receiptPath)
                                 startActivity(intent)
                             }
                         } else {
-                            // Placeholder when no image
                             setImageResource(android.R.drawable.ic_menu_report_image)
                             alpha = 0.3f
                         }
@@ -262,12 +275,15 @@ class ReceiptActivity : AppCompatActivity() {
 
                     val textContainer = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.VERTICAL
-                        val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        val params = LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f
+                        )
                         params.setMargins(24, 0, 0, 0)
                         layoutParams = params
                     }
 
-                    // Look up category name for display
                     val categoryName = loadedCategories
                         .firstOrNull { it.categoryId == expense.categoryId }
                         ?.categoryName ?: "Uncategorised"
@@ -316,8 +332,13 @@ class ReceiptActivity : AppCompatActivity() {
 
     private fun openCamera() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_CODE
+            )
         } else {
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
             cameraLauncher.launch(intent)
@@ -329,14 +350,21 @@ class ReceiptActivity : AppCompatActivity() {
         galleryLauncher.launch(intent)
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_CODE &&
             grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
             openCamera()
         } else {
             Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
     }
 }
+
+
