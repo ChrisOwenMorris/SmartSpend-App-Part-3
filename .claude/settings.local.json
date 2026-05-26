@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew compileDebugKotlin)"
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(Get-ChildItem -Recurse -Filter \"*.kt\" \"C:\\\\Varsity Work\\\\Year 3 Semester 1\\\\PROG7313\\\\SmartSpend-App-Part-3\")",
+      "Bash(Select-String -Pattern \"insert\")",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }

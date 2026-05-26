@@ -195,6 +195,7 @@ class FirebaseRepository {
         return try {
             val goalMap = hashMapOf(
                 "goalId" to goal.goalId,
+                "userId" to goal.userId,
                 "goalName" to goal.goalName,
                 "targetAmount" to goal.targetAmount,
                 "currentAmount" to goal.currentAmount,
