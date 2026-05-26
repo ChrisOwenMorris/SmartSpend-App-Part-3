@@ -26,13 +26,14 @@ class PieChartView @JvmOverloads constructor(
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = 24f
+        textSize = 28f
         textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD
     }
 
     private val legendPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 28f
+        color = Color.DKGRAY
+        textSize = 24f
     }
 
     private val oval = RectF()
@@ -54,7 +55,7 @@ class PieChartView @JvmOverloads constructor(
         oval.set(cx - radius, cy - radius, cx + radius, cy + radius)
 
         if (totalValue == 0f) {
-            paint.color = "#F0F0F0".toColorInt()
+            paint.color = "#E0E0E0".toColorInt()
             canvas.drawCircle(cx, cy, radius, paint)
             return
         }

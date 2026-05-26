@@ -8,7 +8,6 @@
     android:orientation="vertical"
     android:background="#F4F6F8">
 
-    <!-- HEADER -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
@@ -20,7 +19,7 @@
             android:id="@+id/btnMenu"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/text"
+            android:text="\u2630"
             android:textSize="24sp"
             android:textColor="#FFFFFF"
             android:contentDescription="@string/menu_button_description"/>
@@ -45,7 +44,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- MONTHLY SPENDING GOALS CARD -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -111,7 +109,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- FEATURED GOAL CARD -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardFeaturedGoal"
                 android:layout_width="match_parent"
@@ -127,7 +124,6 @@
                     android:orientation="vertical"
                     android:padding="20dp">
 
-                    <!-- GOAL IMAGE -->
                     <FrameLayout
                         android:id="@+id/frameFeaturedImage"
                         android:layout_width="match_parent"
@@ -135,8 +131,6 @@
                         android:layout_marginBottom="16dp"
                         android:background="#F0F0F0">
 
-                        <!-- FIX 2: Insufficient image color contrast — added explicit
-                             colorFilter to ensure the placeholder icon is visible -->
                         <ImageView
                             android:id="@+id/ivFeaturedGoalImage"
                             android:layout_width="match_parent"
@@ -149,8 +143,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
                             android:orientation="vertical"
-                            android:gravity="center"
-                            tools:ignore="UseCompoundDrawables">
+                            android:gravity="center">
 
                             <ImageView
                                 android:layout_width="32dp"
@@ -158,8 +151,6 @@
                                 android:src="@android:drawable/ic_menu_camera"
                                 android:contentDescription="@string/upload_goal_image"/>
 
-                            <!-- FIX 3: Insufficient text color contrast — #888888 on #F0F0F0
-                                 fails WCAG AA. Changed to #555555 for sufficient contrast. -->
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -170,7 +161,6 @@
                         </LinearLayout>
                     </FrameLayout>
 
-                    <!-- GOAL TITLE AND DATE -->
                     <TextView
                         android:id="@+id/tvFeaturedGoalTitle"
                         android:layout_width="wrap_content"
@@ -181,8 +171,6 @@
                         android:textStyle="bold"
                         android:layout_marginBottom="4dp"/>
 
-                    <!-- FIX 4: Insufficient text color contrast — #888888 on #FFFFFF
-                         fails WCAG AA at 13sp. Changed to #555555. -->
                     <TextView
                         android:id="@+id/tvFeaturedGoalDate"
                         android:layout_width="wrap_content"
@@ -192,7 +180,6 @@
                         android:textSize="13sp"
                         android:layout_marginBottom="20dp"/>
 
-                    <!-- PIE CHART + SAVINGS INFO ROW -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -201,10 +188,6 @@
                         android:baselineAligned="false"
                         android:layout_marginBottom="16dp">
 
-                        <!-- PIE CHART -->
-                        <!-- FIX 5: Missing classes / Accessibility Issue on PieChartView —
-                             added tools:ignore="MissingClass" so layout editor doesn't error,
-                             and added contentDescription for accessibility. -->
                         <FrameLayout
                             android:layout_width="110dp"
                             android:layout_height="110dp"
@@ -214,28 +197,25 @@
                                 android:id="@+id/pieChartFeatured"
                                 android:layout_width="110dp"
                                 android:layout_height="110dp"
-                                android:contentDescription="@string/goal_progress_chart"
-                                tools:ignore="MissingClass"/>
+                                android:contentDescription="@string/goal_progress_chart"/>
 
                             <TextView
                                 android:id="@+id/tvFeaturedGoalPercentage"
-                                android:layout_width="21dp"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="center"
-                                android:text="@string/_0"
+                                android:text="0%"
                                 android:textColor="#111111"
                                 android:textSize="18sp"
                                 android:textStyle="bold" />
                         </FrameLayout>
 
-                        <!-- SAVINGS INFO -->
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
-                            <!-- FIX 6: Insufficient text color contrast — #888888 → #555555 -->
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -248,24 +228,22 @@
                                 android:id="@+id/tvFeaturedCurrentAmount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="R 3,250"
+                                android:text="R 0"
                                 android:textColor="#111111"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
-                                android:layout_marginBottom="6dp"
-                                tools:ignore="HardcodedText"/>
+                                android:layout_marginBottom="6dp"/>
 
                             <ProgressBar
                                 android:id="@+id/progressFeaturedGoal"
                                 style="?android:attr/progressBarStyleHorizontal"
                                 android:layout_width="match_parent"
                                 android:layout_height="10dp"
-                                android:progress="65"
-                                android:progressDrawable="@drawable/card_gradient_background"
+                                android:progress="0"
+                                android:max="100"
+                                android:progressDrawable="@drawable/gradient_progress"
                                 android:layout_marginBottom="16dp"/>
 
-                            <!-- FIX 7: tvFeaturedGoalDate contrast — also applied
-                                 #555555 to the goal amount label here -->
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -278,15 +256,13 @@
                                 android:id="@+id/tvFeaturedGoalAmount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="R 5,000"
+                                android:text="R 0"
                                 android:textColor="#111111"
                                 android:textSize="18sp"
-                                android:textStyle="bold"
-                                tools:ignore="HardcodedText"/>
+                                android:textStyle="bold"/>
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- ADD SAVINGS BUTTON -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAddSavings"
                         android:layout_width="match_parent"
@@ -302,7 +278,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- UPDATE GOAL BUTTON -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnUpdateGoal"
                 android:layout_width="match_parent"
@@ -316,7 +291,6 @@
                 app:backgroundTint="@null"
                 app:cornerRadius="12dp"/>
 
-            <!-- CREATE NEW GOAL CARD -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -339,7 +313,6 @@
                         android:textStyle="bold"
                         android:layout_marginBottom="16dp"/>
 
-                    <!-- GOAL NAME -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilGoalName"
                         android:layout_width="match_parent"
@@ -357,7 +330,6 @@
                             android:hint="@string/goal_name"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- GOAL AMOUNT -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilGoalAmount"
                         android:layout_width="match_parent"
@@ -378,7 +350,6 @@
                             android:inputType="numberDecimal"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- TARGET DATE -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilTargetDate"
                         android:layout_width="match_parent"
@@ -399,7 +370,6 @@
                             android:focusable="false"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- IMAGE UPLOAD -->
                     <LinearLayout
                         android:id="@+id/layoutUploadImage"
                         android:layout_width="match_parent"
@@ -425,7 +395,6 @@
                             android:layout_marginTop="8dp"/>
                     </LinearLayout>
 
-                    <!-- CREATE BUTTON -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCreateGoal"
                         android:layout_width="match_parent"
@@ -440,7 +409,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ALL GOALS LIST CARD -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

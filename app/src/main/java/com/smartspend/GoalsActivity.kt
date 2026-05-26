@@ -161,11 +161,10 @@ class GoalsActivity : AppCompatActivity() {
                     findViewById<ProgressBar>(R.id.progressFeaturedGoal).progress =
                         percentage.toInt()
 
-                    // Custom PieChartView logic
                     val pieChart = findViewById<PieChartView>(R.id.pieChartFeatured)
                     val slices = listOf(
-                        PieSlice("Progress", goal.currentAmount, "#6A11CB".toColorInt()),
-                        PieSlice("Remaining", (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0), "#F0F0F0".toColorInt())
+                        PieSlice("Progress", goal.currentAmount, Color.parseColor("#10B981")),
+                        PieSlice("Remaining", (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0), Color.parseColor("#E0E0E0"))
                     )
                     pieChart.setData(slices)
 

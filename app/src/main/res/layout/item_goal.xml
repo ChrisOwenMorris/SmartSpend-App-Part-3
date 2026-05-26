@@ -55,7 +55,9 @@
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="8dp"
-                android:progressDrawable="@drawable/card_gradient_background"
+                android:progress="0"
+                android:max="100"
+                android:progressDrawable="@drawable/gradient_progress"
                 android:layout_marginBottom="4dp"/>
 
             <LinearLayout
