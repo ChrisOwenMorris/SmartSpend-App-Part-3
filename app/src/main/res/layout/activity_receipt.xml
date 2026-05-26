@@ -56,6 +56,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:src="@android:drawable/ic_menu_camera"
+                    android:contentDescription="@string/receipt_preview"
                     app:tint="#FFFFFF" />
 
                 <TextView
@@ -84,6 +85,7 @@
                 android:layout_height="120dp"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
+                android:contentDescription="@string/recent_receipt"
                 android:layout_marginTop="16dp"/>
 
             <!-- Filter: Category -->
@@ -115,7 +117,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Select date (or leave blank for all)"
-                android:focusable="false"
+                android:focusable="true"
                 android:clickable="true"
                 android:inputType="none"
                 android:background="@drawable/card_background"

@@ -42,7 +42,7 @@
     <string name="btn_year">Year</string>
     <string name="net_income_march_2026">Net Income - March 2026</string>
     <string name="r_4_570_20">R 4,570.20</string>
-    <string name="_18_from_february">+18% from February</string>
+    <string name="_18_from_february">+18%from February</string>
     <string name="income_vs_expenses">Income vs Expenses</string>
     <string name="bar_chart_placeholder">Income vs Expenses Bar Chart</string>
     <string name="spending_by_category">Spending by Category</string>
@@ -201,4 +201,7 @@
     <string name="budget_for_month">Budget for %1$s</string>
     <string name="budget_set_for_month">Budget set for %1$s!</string>
     <string name="budget_already_set_message_format" formatted="false">A budget of R%.2f is already set for %s. If you made a mistake, please add the correction as an Income entry. Do you still want to update this budget?</string>
+    <string name="receipt_preview">Receipt preview image</string>
+    <string name="recent_receipt">Recent receipt image</string>
+    <string name="receipt_image">Receipt image</string>
 </resources>
