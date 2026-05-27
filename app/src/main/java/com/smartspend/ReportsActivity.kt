@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import android.annotation.SuppressLint
 import androidx.core.graphics.toColorInt
+import com.smartspend.data.dao.CategoryWithTotal
 
 @SuppressLint("NewApi")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -28,11 +29,14 @@ class ReportsActivity : AppCompatActivity() {
 
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
+    // Track the currently selected period so button state can be highlighted
+    private var currentPeriod = "month"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reports)
 
-        // --- EXISTING NAVIGATION CODE --- //
+        // --- NAVIGATION --- //
         NavigationHelper.setupMenu(this)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -42,36 +46,51 @@ class ReportsActivity : AppCompatActivity() {
         })
 
         // --- VIEWS --- //
-        val btnWeek = findViewById<Button>(R.id.btnWeek)
+        val btnWeek  = findViewById<Button>(R.id.btnWeek)
         val btnMonth = findViewById<Button>(R.id.btnMonth)
-        val btnYear = findViewById<Button>(R.id.btnYear)
-        val tvPeriodLabel = findViewById<TextView>(R.id.tvPeriodLabel)
-        val tvTotalAmount = findViewById<TextView>(R.id.tvTotalAmount)
-        val tvComparison = findViewById<TextView>(R.id.tvComparison)
+        val btnYear  = findViewById<Button>(R.id.btnYear)
+        val tvPeriodLabel  = findViewById<TextView>(R.id.tvPeriodLabel)
+        val tvTotalAmount  = findViewById<TextView>(R.id.tvTotalAmount)
+        val tvComparison   = findViewById<TextView>(R.id.tvComparison)
         val rvTopMerchants = findViewById<RecyclerView>(R.id.rvTopMerchants)
-        val btnExport = findViewById<Button>(R.id.btnExport)
+        val btnExport      = findViewById<Button>(R.id.btnExport)
 
-        // --- SETUP RECYCLERVIEW --- //
+        // --- RECYCLERVIEW --- //
         rvTopMerchants.layoutManager = LinearLayoutManager(this)
 
-        // --- LOAD DEFAULT VIEW (MONTH) --- //
-        loadReport("month", tvPeriodLabel, tvTotalAmount, tvComparison, rvTopMerchants)
+        // Helper to update button visual state
+        fun updateButtonStates(selected: String) {
+            val alpha = 0.5f
+            btnWeek.alpha  = if (selected == "week")  1f else alpha
+            btnMonth.alpha = if (selected == "month") 1f else alpha
+            btnYear.alpha  = if (selected == "year")  1f else alpha
+        }
 
         // --- PERIOD BUTTON CLICKS --- //
         btnWeek.setOnClickListener {
+            currentPeriod = "week"
+            updateButtonStates("week")
             loadReport("week", tvPeriodLabel, tvTotalAmount, tvComparison, rvTopMerchants)
         }
         btnMonth.setOnClickListener {
+            currentPeriod = "month"
+            updateButtonStates("month")
             loadReport("month", tvPeriodLabel, tvTotalAmount, tvComparison, rvTopMerchants)
         }
         btnYear.setOnClickListener {
+            currentPeriod = "year"
+            updateButtonStates("year")
             loadReport("year", tvPeriodLabel, tvTotalAmount, tvComparison, rvTopMerchants)
         }
 
-        // --- EXPORT BUTTON --- //
+        // --- EXPORT (Member 4) --- //
         btnExport.setOnClickListener {
-            // PDF export can be added later
+            // PDF export functionality handled by Member 4
         }
+
+        // --- LOAD DEFAULT (MONTH) --- //
+        updateButtonStates("month")
+        loadReport("month", tvPeriodLabel, tvTotalAmount, tvComparison, rvTopMerchants)
     }
 
     private fun loadReport(
@@ -81,91 +100,107 @@ class ReportsActivity : AppCompatActivity() {
         tvComparison: TextView,
         rvTopMerchants: RecyclerView
     ) {
-        val today = LocalDate.now()
-        val endDate = today.format(formatter)
+        val today    = LocalDate.now()
+        val endDate  = today.format(formatter)
+
+        // Determine look-back window and display label based on selected period
         val daysBack: Long
         val label: String
-
         when (period) {
             "week" -> {
                 daysBack = 7L
-                label = getString(R.string.btn_week)
+                label    = getString(R.string.btn_week)
             }
             "year" -> {
                 daysBack = 365L
-                label = getString(R.string.btn_year)
+                label    = getString(R.string.btn_year)
             }
-            else -> {
+            else -> {                          // default = month
                 daysBack = 30L
-                label = getString(R.string.btn_month)
+                label    = getString(R.string.btn_month)
             }
         }
 
         val startDate = today.minusDays(daysBack).format(formatter)
         val prevStart = today.minusDays(daysBack * 2).format(formatter)
 
+        Log.d("ReportsActivity", "loadReport($period) — $startDate → $endDate")
+
         lifecycleScope.launch {
             try {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                Log.d("ReportsActivity", "Loading report for userId: $userId")
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
+                    Log.w("ReportsActivity", "No authenticated user — aborting report load")
+                    return@launch
+                }
 
-                // 1. FETCH BASE DATA FROM DB
-                val total = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
-                val prevTotal = db.expenseDao().getTotalByDateRange(userId, prevStart, startDate)
-                val topCategories = db.expenseDao().getTopCategoriesWithNames(userId, startDate, endDate)
+                // ── 1. SUMMARY CARD ──────────────────────────────────────────
+                val totalExpenses  = db.expenseDao().getTotalByDateRange(userId, startDate, endDate) ?: 0.0
+                val previousTotal  = db.expenseDao().getTotalByDateRange(userId, prevStart, startDate) ?: 0.0
+                val topCategories  = db.expenseDao().getTopCategoriesWithNames(userId, startDate, endDate) ?: emptyList()
 
-                // 2. UPDATE SUMMARY TEXT VIEWS
                 tvPeriodLabel.text = label
-                val totalNum = total.toString().toDoubleOrNull() ?: 0.0
-                tvTotalAmount.text = getString(R.string.amount_format, totalNum)
+                tvTotalAmount.text = getString(R.string.amount_format, totalExpenses)
 
-                val previousTotal = prevTotal.toString().toDoubleOrNull() ?: 0.0
-                val change = if (previousTotal > 0) {
-                    ((totalNum - previousTotal) / previousTotal * 100)
+                val changePct = if (previousTotal > 0.0) {
+                    (totalExpenses - previousTotal) / previousTotal * 100
                 } else {
                     0.0
                 }
-                val sign = if (change >= 0) "+" else ""
-                tvComparison.text = getString(R.string.comparison_format, sign, change)
+                val sign = if (changePct >= 0) "+" else ""
+                tvComparison.text = getString(R.string.comparison_format, sign, changePct)
 
-                // 3. INCOME VS EXPENSES BAR CHART
-                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
-                val totalIncome = db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
+                Log.d("ReportsActivity", "Summary — total: $totalExpenses, prev: $previousTotal, Δ: $sign${String.format("%.1f", changePct)}%")
+
+                // ── 2. INCOME VS EXPENSES BAR CHART ──────────────────────────
+                val totalIncome = db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate) ?: 0.0
                 Log.d("ReportsActivity", "Bar chart — income: $totalIncome, expenses: $totalExpenses")
 
                 val incomeExpenseChart = findViewById<IncomeExpenseBarChartView>(R.id.incomeExpenseChart)
                 incomeExpenseChart?.setData(totalIncome, totalExpenses)
 
-                // 4. PIE CHART — SPENDING BY CATEGORY
-                val pieData = db.expenseDao().getExpensesGroupedByCategory(userId, startDate, endDate)
+                // ── 3. PIE CHART — SPENDING BY CATEGORY ──────────────────────
+                val pieData = db.expenseDao().getExpensesGroupedByCategory(userId, startDate, endDate) ?: emptyList()
                 val colorPalette = listOf(
                     "#6A11CB".toColorInt(),
                     "#2575FC".toColorInt(),
-                    "#FF5F6D".toColorInt()
+                    "#FF5F6D".toColorInt(),
+                    "#FFA17F".toColorInt(),
+                    "#00C9FF".toColorInt()
                 )
                 val slices = pieData.mapIndexed { index, summary ->
                     PieSlice(
-                        name = summary.categoryName,
+                        name  = summary.categoryName,
                         value = summary.total,
                         color = colorPalette[index % colorPalette.size]
                     )
                 }
-                Log.d("ReportsActivity", "Pie chart — ${slices.size} category slices")
+                Log.d("ReportsActivity", "Pie chart — ${slices.size} slices for $period")
                 findViewById<PieChartView>(R.id.pieChart)?.setData(slices)
 
-                // 5. TREND CHART — 6 MONTHS
-                val sixMonthsAgo = LocalDate.now().minusMonths(6).format(formatter)
-                val trendData = db.expenseDao().getMonthlyTrends(userId, sixMonthsAgo)
-                Log.d("ReportsActivity", "Trend chart — ${trendData.size} month(s) of data")
-                val trendChart = findViewById<TrendChartView>(R.id.trendChart)
-                trendChart?.setData(trendData)
+                // ── 4. Y-AXIS CHART — SPENDING BY CATEGORY (BAR WITH Y AXIS) ──
+                val yAxisData = pieData.map { summary -> Pair(summary.categoryName, summary.total) }
+                Log.d("ReportsActivity", "Y-axis chart — ${yAxisData.size} categories for $period")
+                findViewById<YAxisChartView>(R.id.yAxisChart)?.setData(yAxisData)
 
-                // 6. TOP CATEGORIES LIST
+                // ── 5. TREND CHART — period-aware window ──────────────────────
+                // Show a trend that matches the selected period:
+                //   week  → last 7 days  (daily breakdown)
+                //   month → last 6 months (monthly breakdown — existing behaviour)
+                //   year  → last 12 months
+                val trendStartDate = when (period) {
+                    "week"  -> today.minusWeeks(1).format(formatter)
+                    "year"  -> today.minusMonths(12).format(formatter)
+                    else    -> today.minusMonths(6).format(formatter)   // month default
+                }
+                val trendData = db.expenseDao().getMonthlyTrends(userId, trendStartDate) ?: emptyList()
+                Log.d("ReportsActivity", "Trend chart — ${trendData.size} point(s) for $period from $trendStartDate")
+                findViewById<TrendChartView>(R.id.trendChart)?.setData(trendData)
+
+                // ── 5. TOP CATEGORIES RECYCLERVIEW ───────────────────────────
                 rvTopMerchants.adapter = TopCategoriesAdapter(topCategories)
 
             } catch (e: Exception) {
-                Log.e("ReportsActivity", "Error loading report: ${e.message}")
-                e.printStackTrace()
+                Log.e("ReportsActivity", "Error loading report: ${e.message}", e)
             }
         }
     }

@@ -12,7 +12,6 @@ class TrendChartView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-
     private var data: List<TrendSummary> = emptyList()
 
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -22,29 +21,24 @@ class TrendChartView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = "#2575FC".toColorInt()
         style = Paint.Style.FILL
     }
-
     private val dotOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#E0E0E0")
         strokeWidth = 2f
         style = Paint.Style.STROKE
     }
-
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.GRAY
         textSize = 28f
         textAlign = Paint.Align.CENTER
     }
-
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.DKGRAY
         textSize = 24f
@@ -62,7 +56,7 @@ class TrendChartView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val paddingLeft = 80f
+        val paddingLeft = 90f
         val paddingRight = 40f
         val paddingTop = 40f
         val paddingBottom = 80f
@@ -71,6 +65,7 @@ class TrendChartView @JvmOverloads constructor(
         val chartHeight = height - paddingTop - paddingBottom
 
         if (data.isEmpty()) {
+            labelPaint.textAlign = Paint.Align.CENTER
             canvas.drawText("No data available", width / 2f, height / 2f, labelPaint)
             return
         }
@@ -78,11 +73,12 @@ class TrendChartView @JvmOverloads constructor(
         val maxAmount = data.maxOfOrNull { it.total }?.toFloat()?.coerceAtLeast(1f) ?: 1f
         val minAmount = 0f
 
+        // Draw horizontal grid lines
         for (i in 0..4) {
             val y = paddingTop + chartHeight - (i * chartHeight / 4)
             canvas.drawLine(paddingLeft, y, width - paddingRight, y, gridPaint)
             val value = minAmount + (i * (maxAmount - minAmount) / 4)
-            canvas.drawText("R${(value / 1000).toInt()}k", paddingLeft - 10f, y + 8f, valuePaint)
+            canvas.drawText("R ${(value / 1000).toInt()}k", paddingLeft - 15f, y + 8f, valuePaint)
         }
 
         points.clear()
@@ -101,8 +97,12 @@ class TrendChartView @JvmOverloads constructor(
             }
         }
 
-        canvas.drawPath(path, linePaint)
+        // Draw trend line only if we have at least 2 points
+        if (data.size > 1) {
+            canvas.drawPath(path, linePaint)
+        }
 
+        // Draw points & indicators
         points.forEachIndexed { index, point ->
             canvas.drawCircle(point.x, point.y, 12f, dotPaint)
             canvas.drawCircle(point.x, point.y, 6f, dotOutlinePaint)
@@ -111,7 +111,7 @@ class TrendChartView @JvmOverloads constructor(
             canvas.drawText(monthLabel, point.x, height - 20f, labelPaint)
 
             val value = data.getOrNull(index)?.total ?: 0.0
-            canvas.drawText("R${value.toInt()}", point.x, point.y - 20f, valuePaint)
+            canvas.drawText("R${value.toInt()}", point.x, point.y - 20f, labelPaint)
         }
     }
 }

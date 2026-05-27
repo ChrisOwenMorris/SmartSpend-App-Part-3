@@ -11,7 +11,6 @@ class IncomeExpenseBarChartView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-
     private var income: Double = 0.0
     private var expense: Double = 0.0
 
@@ -19,21 +18,18 @@ class IncomeExpenseBarChartView @JvmOverloads constructor(
         color = "#4CAF50".toColorInt()
         style = Paint.Style.FILL
     }
-
     private val expensePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = "#F44336".toColorInt()
         style = Paint.Style.FILL
     }
-
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK
-        textSize = 36f
+        textSize = 32f
         textAlign = Paint.Align.CENTER
     }
-
     private val amountPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.DKGRAY
-        textSize = 28f
+        textSize = 26f
         textAlign = Paint.Align.CENTER
     }
 
@@ -46,37 +42,37 @@ class IncomeExpenseBarChartView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val padding = 100f
+        val padding = 80f
         val chartHeight = height - (padding * 2)
         val chartWidth = width - (padding * 2)
-
         val maxVal = maxOf(income, expense).toFloat().coerceAtLeast(1f)
+
         val barWidth = chartWidth / 3.5f
 
+        // Income Bar Calculation
         val incomeHeight = if (maxVal > 0) (income.toFloat() / maxVal) * chartHeight else 0f
         val incomeLeft = padding + (chartWidth * 0.15f)
-
         val incomeRect = RectF(
             incomeLeft,
             (height - padding) - incomeHeight,
             incomeLeft + barWidth,
             height - padding
         )
-        canvas.drawRoundRect(incomeRect, 8f, 8f, incomePaint)
-        canvas.drawText("Income", incomeRect.centerX(), height - 40f, textPaint)
-        canvas.drawText("R ${income.toInt()}", incomeRect.centerX(), incomeRect.top - 10f, amountPaint)
+        canvas.drawRoundRect(incomeRect, 12f, 12f, incomePaint)
+        canvas.drawText("Income", incomeRect.centerX(), height - 30f, textPaint)
+        canvas.drawText("R ${income.toInt()}", incomeRect.centerX(), incomeRect.top - 15f, amountPaint)
 
+        // Expense Bar Calculation
         val expenseHeight = if (maxVal > 0) (expense.toFloat() / maxVal) * chartHeight else 0f
         val expenseLeft = padding + (chartWidth * 0.55f)
-
         val expenseRect = RectF(
             expenseLeft,
             (height - padding) - expenseHeight,
             expenseLeft + barWidth,
             height - padding
         )
-        canvas.drawRoundRect(expenseRect, 8f, 8f, expensePaint)
-        canvas.drawText("Expenses", expenseRect.centerX(), height - 40f, textPaint)
-        canvas.drawText("R ${expense.toInt()}", expenseRect.centerX(), expenseRect.top - 10f, amountPaint)
+        canvas.drawRoundRect(expenseRect, 12f, 12f, expensePaint)
+        canvas.drawText("Expenses", expenseRect.centerX(), height - 30f, textPaint)
+        canvas.drawText("R ${expense.toInt()}", expenseRect.centerX(), expenseRect.top - 15f, amountPaint)
     }
 }
