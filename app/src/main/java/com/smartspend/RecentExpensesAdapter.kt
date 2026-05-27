@@ -1,23 +1,28 @@
 package com.smartspend
 
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.smartspend.data.entity.Expense
 
-class RecentExpensesAdapter(private val expenses: List<Expense>) :
+class RecentExpensesAdapter(private val expenses: MutableList<Expense> = mutableListOf()) :
     RecyclerView.Adapter<RecentExpensesAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvDescription: TextView = view.findViewById(R.id.tvExpenseDescription)
         val tvAmount: TextView = view.findViewById(R.id.tvExpenseAmount)
         val tvDate: TextView = view.findViewById(R.id.tvExpenseDate)
+        val ivImage: ImageView = view.findViewById(R.id.ivTransactionImage)
     }
+
     fun updateData(newList: List<Expense>) {
-        (expenses as MutableList).clear()
-        (expenses as MutableList).addAll(newList)
+        expenses.clear()
+        expenses.addAll(newList)
         notifyDataSetChanged()
     }
 
@@ -39,6 +44,22 @@ class RecentExpensesAdapter(private val expenses: List<Expense>) :
             holder.tvAmount.setTextColor(android.graphics.Color.parseColor("#C62828"))
         }
         holder.tvDate.text = expense.date
+
+        if (!expense.imagePath.isNullOrEmpty()) {
+            val uri = Uri.parse(expense.imagePath)
+            holder.ivImage.setImageURI(uri)
+            holder.ivImage.visibility = View.VISIBLE
+            holder.ivImage.setOnClickListener {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "image/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                holder.itemView.context.startActivity(intent)
+            }
+        } else {
+            holder.ivImage.visibility = View.GONE
+            holder.ivImage.setOnClickListener(null)
+        }
     }
 
     override fun getItemCount() = expenses.size

@@ -120,7 +120,7 @@
     <string name="desc_category_spinner">desc_category_spinner</string>
     <string name="label_date">Date</string>
     <string name="hint_select_date">Select Date</string>
-    <string name="label_description_optional">Description Optional</string>
+    <string name="label_description_optional">Description (Optional)</string>
     <string name="hint_notes">Notes</string>
     <string name="label_summary">Summary</string>
     <string name="label_quick_add">Quick Add</string>
@@ -204,4 +204,5 @@
     <string name="receipt_preview">Receipt preview image</string>
     <string name="recent_receipt">Recent receipt image</string>
     <string name="receipt_image">Receipt image</string>
+    <string name="attach_image_optional">Attach Image (Optional)</string>
 </resources>

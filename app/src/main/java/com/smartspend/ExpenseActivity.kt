@@ -21,6 +21,12 @@ import com.smartspend.data.firebase.FirebaseRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import android.net.Uri
+import android.widget.ImageView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import java.io.File
+import androidx.appcompat.app.AlertDialog
 
 class ExpenseActivity : AppCompatActivity() {
 
@@ -35,8 +41,8 @@ class ExpenseActivity : AppCompatActivity() {
     private lateinit var tvSummaryAmount: TextView
     private lateinit var tvSummaryDate: TextView
 
-    private lateinit var btnExpense: Button
-    private lateinit var btnIncome: Button
+    private lateinit var btnExpense: TextView
+    private lateinit var btnIncome: TextView
     private lateinit var btnSave: Button
     private lateinit var btnStartTime: Button
     private lateinit var btnEndTime: Button
@@ -44,13 +50,30 @@ class ExpenseActivity : AppCompatActivity() {
 
     private lateinit var spCategory: Spinner
 
+    private lateinit var ivImagePreview: ImageView
+    private lateinit var btnUploadImage: Button
+    private lateinit var btnRemoveImage: Button
+
     private var receiptPath: String? = null
     private var isExpense = true
     private var startTime = "00:00"
     private var endTime = "00:00"
     private var loadedCategories: List<Category> = emptyList()
 
+    private var selectedImageUri: Uri? = null
+    private var cameraImageUri: Uri? = null
+
     private val calendar = Calendar.getInstance()
+
+    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { setImagePreview(it) }
+    }
+
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            cameraImageUri?.let { setImagePreview(it) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +115,9 @@ class ExpenseActivity : AppCompatActivity() {
         btnEndTime         = findViewById(R.id.btnEndTime)
         btnCreateCategory  = findViewById(R.id.btnCreateCategory)
         spCategory         = findViewById(R.id.spCategory)
+        ivImagePreview     = findViewById(R.id.ivImagePreview)
+        btnUploadImage     = findViewById(R.id.btnUploadImage)
+        btnRemoveImage     = findViewById(R.id.btnRemoveImage)
     }
 
     /** Apply the correct colours immediately on open — Expense is selected by default. */
@@ -101,24 +127,22 @@ class ExpenseActivity : AppCompatActivity() {
 
     private fun applyExpenseSelected() {
         isExpense = true
-        btnExpense.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(Color.parseColor("#E53935"))
+        btnExpense.background = getDrawable(R.drawable.bg_btn_expense)
+        btnIncome.background = getDrawable(R.drawable.bg_btn_income_inactive)
         btnExpense.setTextColor(Color.WHITE)
-        btnIncome.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(Color.parseColor("#9E9E9E"))
         btnIncome.setTextColor(Color.WHITE)
         tvSummaryAmount.setTextColor(Color.parseColor("#E91E63"))
+        btnSave.text = "Save Expense"
     }
 
     private fun applyIncomeSelected() {
         isExpense = false
-        btnIncome.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(Color.parseColor("#00C896"))
-        btnIncome.setTextColor(Color.WHITE)
-        btnExpense.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(Color.parseColor("#9E9E9E"))
+        btnExpense.background = getDrawable(R.drawable.bg_btn_expense_inactive)
+        btnIncome.background = getDrawable(R.drawable.bg_btn_income)
         btnExpense.setTextColor(Color.WHITE)
+        btnIncome.setTextColor(Color.WHITE)
         tvSummaryAmount.setTextColor(Color.parseColor("#00C896"))
+        btnSave.text = "Save Income"
     }
 
     private fun setupListeners() {
@@ -126,12 +150,13 @@ class ExpenseActivity : AppCompatActivity() {
         btnExpense.setOnClickListener {
             applyExpenseSelected()
             updateSummary()
+            Toast.makeText(this, "Expense selected", Toast.LENGTH_SHORT).show()
         }
 
         btnIncome.setOnClickListener {
             applyIncomeSelected()
             updateSummary()
-            Toast.makeText(this, "Income selected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Income Selected", Toast.LENGTH_SHORT).show()
         }
 
         etAmount.addTextChangedListener { updateSummary() }
@@ -167,6 +192,42 @@ class ExpenseActivity : AppCompatActivity() {
                 val button = quickContainer.getChildAt(i) as? Button ?: continue
                 val amount = quickButtons.getOrNull(i) ?: 0.0
                 button.setOnClickListener { etAmount.setText(amount.toString()) }
+            }
+        }
+
+        btnUploadImage.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Choose Image Source")
+                .setItems(arrayOf("Camera", "Gallery")) { _: android.content.DialogInterface, which: Int ->
+                    if (which == 0) {
+                        val imageFile = File(filesDir, "temp_image_${System.currentTimeMillis()}.jpg")
+                        cameraImageUri = FileProvider.getUriForFile(
+                            this,
+                            "${packageName}.provider",
+                            imageFile
+                        )
+                        cameraLauncher.launch(cameraImageUri!!)
+                    } else {
+                        galleryLauncher.launch("image/*")
+                    }
+                }
+                .show()
+        }
+
+        btnRemoveImage.setOnClickListener {
+            selectedImageUri = null
+            ivImagePreview.setImageURI(null)
+            ivImagePreview.visibility = android.view.View.GONE
+            btnRemoveImage.visibility = android.view.View.GONE
+        }
+
+        ivImagePreview.setOnClickListener {
+            selectedImageUri?.let { uri ->
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "image/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(intent)
             }
         }
     }
@@ -357,7 +418,8 @@ class ExpenseActivity : AppCompatActivity() {
                     startTime = this@ExpenseActivity.startTime,
                     endTime = this@ExpenseActivity.endTime,
                     categoryId = categoryId,
-                    receiptPath = receiptPath
+                    receiptPath = receiptPath,
+                    imagePath = selectedImageUri?.toString()
                 )
 
                 val newId = db.expenseDao().insert(expense)
@@ -418,5 +480,16 @@ class ExpenseActivity : AppCompatActivity() {
         btnStartTime.text = "Start Time: 00:00"
         btnEndTime.text = "End Time: 00:00"
         updateSummary()
+        selectedImageUri = null
+        ivImagePreview.setImageURI(null)
+        ivImagePreview.visibility = android.view.View.GONE
+        btnRemoveImage.visibility = android.view.View.GONE
+    }
+
+    private fun setImagePreview(uri: Uri) {
+        selectedImageUri = uri
+        ivImagePreview.setImageURI(uri)
+        ivImagePreview.visibility = android.view.View.VISIBLE
+        btnRemoveImage.visibility = android.view.View.VISIBLE
     }
 }

@@ -36,4 +36,15 @@
         android:textStyle="bold"
         android:textColor="#E53935"/>
 
+    <ImageView
+        android:id="@+id/ivTransactionImage"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/card_background"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"/>
+
 </LinearLayout>

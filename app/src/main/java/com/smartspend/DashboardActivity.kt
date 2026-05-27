@@ -38,7 +38,7 @@ class DashboardActivity : AppCompatActivity() {
         val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
         rvRecentExpenses.layoutManager = LinearLayoutManager(this)
 
-        recentExpensesAdapter = RecentExpensesAdapter(emptyList())
+        recentExpensesAdapter = RecentExpensesAdapter()
         rvRecentExpenses.adapter = recentExpensesAdapter
 
         findViewById<Button>(R.id.btnQuickAddExpense).setOnClickListener {
