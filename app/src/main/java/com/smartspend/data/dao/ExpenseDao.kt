@@ -55,6 +55,9 @@ interface ExpenseDao {
         ORDER BY date ASC
     """)
     suspend fun getMonthlyTrends(userId: String, sixMonthsAgo: String): List<TrendSummary>
+
+    @Query("UPDATE expenses SET imagePath = :imagePath WHERE expenseId = :expenseId")
+    suspend fun updateImagePath(expenseId: Int, imagePath: String)
 }
 
 data class CategoryTotal(

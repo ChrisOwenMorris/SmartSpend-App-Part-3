@@ -102,6 +102,7 @@ class FirebaseRepository {
                 "endTime" to expense.endTime,
                 "category" to categoryName,
                 "receiptPath" to (expense.receiptPath ?: ""),
+                "imagePath" to (expense.imagePath ?: ""),
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
@@ -247,6 +248,29 @@ class FirebaseRepository {
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save spending goal: ${e.message}")
             false
+        }
+    }
+
+    /**
+     * Uploads a receipt image to Firebase Storage.
+     * Returns the download URL string or null on failure.
+     * Reference: https://firebase.google.com/docs/storage/android/upload-files
+     */
+    suspend fun uploadExpenseImage(
+        localUri: android.net.Uri,
+        expenseId: Int
+    ): String? {
+        val uid = currentUserId ?: return null
+        return try {
+            val ref = storage.reference
+                .child("users/$uid/expense_images/$expenseId.jpg")
+            ref.putFile(localUri).await()
+            val downloadUrl = ref.downloadUrl.await().toString()
+            Log.d("FirebaseRepo", "Image uploaded to Firebase Storage: $downloadUrl")
+            downloadUrl
+        } catch (e: Exception) {
+            Log.e("FirebaseRepo", "Image upload failed: ${e.message}")
+            null
         }
     }
 

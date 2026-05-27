@@ -423,10 +423,23 @@ class ExpenseActivity : AppCompatActivity() {
                 )
 
                 val newId = db.expenseDao().insert(expense)
-                val savedExpense = expense.copy(expenseId = newId.toInt())
                 Log.d("ExpenseActivity", "Expense inserted into Room DB with id=$newId")
 
                 val firebaseRepo = FirebaseRepository()
+
+                val imageUrl = if (selectedImageUri != null) {
+                    firebaseRepo.uploadExpenseImage(selectedImageUri!!, newId.toInt())
+                } else null
+
+                if (imageUrl != null) {
+                    db.expenseDao().updateImagePath(newId.toInt(), imageUrl)
+                    Log.d("ExpenseActivity", "Room imagePath updated with Firebase URL")
+                }
+
+                val savedExpense = expense.copy(
+                    expenseId = newId.toInt(),
+                    imagePath = imageUrl ?: selectedImageUri?.toString()
+                )
 
                 if (!isExpense) {
                     val income = com.smartspend.data.entity.Income(
