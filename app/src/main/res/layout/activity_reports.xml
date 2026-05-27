@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:background="#F4F6F8">
 
-    <!-- HEADER -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
@@ -32,7 +31,6 @@
             android:layout_marginStart="16dp" />
     </LinearLayout>
 
-    <!-- BODY -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -43,7 +41,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- REPORT PERIOD -->
+            <!-- ── PERIOD SELECTOR ──────────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -101,7 +99,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- SUMMARY CARD -->
+            <!-- ── SUMMARY CARD ─────────────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -136,7 +134,7 @@
                     android:layout_height="wrap_content"/>
             </LinearLayout>
 
-            <!-- CHART PLACEHOLDER -->
+            <!-- ── INCOME VS EXPENSES BAR CHART ─────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -160,36 +158,55 @@
                     android:layout_height="200dp" />
             </LinearLayout>
 
-            <!-- PIE CHART -->
+            <!-- ── PIE CHART — SPENDING BY CATEGORY ─────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/card_background"
                 android:orientation="vertical"
+                android:padding="16dp"
                 android:layout_marginBottom="12dp">
-
-                <com.smartspend.PieChartView
-                android:id="@+id/pieChart"
-                android:layout_width="match_parent"
-                android:layout_height="220dp"
-                android:gravity="center" />
 
                 <TextView
                     android:text="@string/spending_by_category"
                     android:textStyle="bold"
                     android:textSize="18sp"
+                    android:layout_gravity="center_horizontal"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"/>
 
-                <TextView
-                    android:id="@+id/tvPieChartPlaceholder"
-                    android:text="@string/pie_chart_placeholder"
-                    android:layout_marginTop="10dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+                <com.smartspend.PieChartView
+                    android:id="@+id/pieChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="260dp" />
             </LinearLayout>
 
-            <!-- LINE GRAPH -->
+            <!-- ── Y-AXIS CHART — SPENDING BY CATEGORY ──────────────────── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_background"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:text="Spending by Category (Y-Chart)"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"/>
+
+                <com.smartspend.YAxisChartView
+                    android:id="@+id/yAxisChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="260dp" />
+            </LinearLayout>
+
+            <!-- ── 6-MONTH TREND LINE CHART ──────────────────────────────── -->
             <LinearLayout
                 android:id="@+id/layoutLineGraph"
                 android:layout_width="match_parent"
@@ -213,10 +230,9 @@
                     android:id="@+id/trendChart"
                     android:layout_width="match_parent"
                     android:layout_height="200dp" />
-
             </LinearLayout>
 
-            <!-- TOP MERCHANTS -->
+            <!-- ── TOP CATEGORIES LIST ───────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -239,10 +255,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"/>
-
             </LinearLayout>
 
-            <!-- EXPORT BUTTON -->
+            <!-- ── EXPORT BUTTON ─────────────────────────────────────────── -->
             <Button
                 android:id="@+id/btnExport"
                 android:layout_width="match_parent"
@@ -254,7 +269,5 @@
                 app:backgroundTint="@null"/>
 
         </LinearLayout>
-
     </ScrollView>
-
 </LinearLayout>
