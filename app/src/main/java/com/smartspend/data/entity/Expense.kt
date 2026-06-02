@@ -15,5 +15,6 @@ data class Expense(
     val endTime: String,
     val categoryId: Int,
     val receiptPath: String?,
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
 )

@@ -11,5 +11,7 @@ data class Income(
     val source: String,
     val amount: Double,
     val date: String,
-    val description: String? = null
+    val description: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val imagePath: String? = null,
 )

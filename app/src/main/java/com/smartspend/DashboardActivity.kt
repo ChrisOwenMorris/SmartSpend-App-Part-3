@@ -18,8 +18,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
+import com.smartspend.data.entity.Expense
 import com.smartspend.data.firebase.FirebaseRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 class DashboardActivity : AppCompatActivity() {
@@ -29,6 +33,9 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private lateinit var recentExpensesAdapter: RecentExpensesAdapter
+
+    // TRACKER: Holds a reference to the active loading task
+    private var dashboardLoadJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +69,7 @@ class DashboardActivity : AppCompatActivity() {
         loadDashboardData()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         loadDashboardData()
     }
@@ -161,10 +168,15 @@ class DashboardActivity : AppCompatActivity() {
                 }
                 editor.apply()
 
-                lifecycleScope.launch {
-                    val firebaseRepo = FirebaseRepository()
-                    firebaseRepo.saveBudget(monthIndex, budget.toDouble())
-                    Log.d("Dashboard", "Budget synced to Firebase")
+                // 🌟 MINE: Preserve your Firebase budget cloud sync here!
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val firebaseRepo = FirebaseRepository()
+                        firebaseRepo.saveBudget(monthIndex, budget.toDouble())
+                        Log.d("Dashboard", "Budget synced to Firebase successfully")
+                    } catch (e: Exception) {
+                        Log.e("Dashboard", "Failed to sync budget to Firebase", e)
+                    }
                 }
 
                 loadDashboardData()
@@ -179,7 +191,11 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun loadDashboardData() {
-        lifecycleScope.launch {
+        // 🌟 THEIRS: Cancel any identical data loading tasks that are already running for stability
+        dashboardLoadJob?.cancel()
+
+        // 🌟 THEIRS: Assign the optimized async thread task
+        dashboardLoadJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val cal = Calendar.getInstance()
                 val currentMonth = cal.get(Calendar.MONTH)
@@ -191,18 +207,65 @@ class DashboardActivity : AppCompatActivity() {
                 )
 
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                Log.d("Dashboard", "Loading data for user: $userId")
+                Log.d("Dashboard", "Loading combined transactional data for user: $userId")
 
-                val totalExpenses = db.expenseDao()
-                    .getTotalByDateRange(userId, startDate, endDate)
-                val totalIncome = db.incomeDao()
-                    .getTotalIncomeByDateRange(userId, startDate, endDate)
+                // 1. Load calculated metrics based on date boundaries
+                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
 
-                val allTransactions = db.expenseDao().getAllExpenses(userId)
-                val sorted = allTransactions.sortedByDescending { it.date }
-                val recentTransactions = sorted.take(5)
-                val count = allTransactions.size
+                val totalIncome = try {
+                    db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
+                } catch (e: Exception) {
+                    Log.e("DashboardActivity", "Error calling incomeDao stream calculation", e)
+                    0.0
+                }
 
+                // 2. Load lists from both tables to merge into a single statement feed
+                val rawExpensesWithCategory = db.expenseDao().getAllExpensesWithCategoryNames(userId)
+
+                val rawIncomes = try {
+                    db.incomeDao().getAllIncome(userId)
+                } catch (e: Exception) {
+                    Log.e("DashboardActivity", "Error loading row list from income Dao collection structure", e)
+                    emptyList()
+                }
+
+                // 3. Map Income list entities into general compatible shapes matching adapter item expectations
+                val convertedIncomes = rawIncomes.map { income: com.smartspend.data.entity.Income ->
+                    Expense(
+                        userId = income.userId,
+                        amount = income.amount,
+                        description = if (income.source.isNullOrEmpty()) "Income" else income.source,
+                        date = income.date,
+                        startTime = "00:00",
+                        endTime = "00:00",
+                        categoryId = -1,
+                        receiptPath = null,
+                        imagePath = income.imagePath,
+                        createdAt = income.createdAt,
+                    )
+                }
+
+                val processedExpenses = rawExpensesWithCategory.map { item ->
+                    val rawExpense = item.expense
+                    val catName = item.categoryName
+
+                    // Format output title as: "Category Name (Custom Note Details)" or just "Category Name"
+                    val displayDescription = if (rawExpense.description.isEmpty() || rawExpense.description == "Expense") {
+                        catName
+                    } else {
+                        "$catName (${rawExpense.description})"
+                    }
+
+                    rawExpense.copy(description = displayDescription)
+                }
+
+                // 4. Merge streams, sort, and slice to extract the newest 5 items
+                val masterFeedList = processedExpenses + convertedIncomes
+                val sortedTransactions = masterFeedList.sortedByDescending { it.createdAt }
+                val recentTransactions = sortedTransactions.take(5)
+                val totalTransactionsCount = masterFeedList.size
+
+                // 5. Shared preferences budget math limits calculations
                 val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
                 val savedBudget = prefs.getFloat(
                     "monthly_budget_$currentMonth",
@@ -210,13 +273,20 @@ class DashboardActivity : AppCompatActivity() {
                 ).toDouble()
 
                 val budget = if (savedBudget > 0) savedBudget else 0.0
-                val remaining = if (budget > 0) budget - totalExpenses else 0.0
+
+                // INTEGRATED BALANCE MATH FORMULA
+                val remaining = if (budget > 0) {
+                    (budget - totalExpenses) + totalIncome
+                } else {
+                    0.0 + totalIncome
+                }
+
                 val progress = if (budget > 0) {
                     ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100)
                 } else 0
 
-                runOnUiThread {
-
+                // Context-switch cleanly back to the Main thread thread-pool for layout operations
+                withContext(Dispatchers.Main) {
                     findViewById<TextView>(R.id.tvTotalBudget)?.text =
                         getString(R.string.amount_format, budget.toFloat())
 
@@ -227,9 +297,9 @@ class DashboardActivity : AppCompatActivity() {
                         getString(R.string.amount_format, remaining.toFloat())
 
                     findViewById<TextView>(R.id.tvTransactionCount)?.text =
-                        getString(R.string.transaction_count, count)
+                        getString(R.string.transaction_count, totalTransactionsCount)
 
-                    val latestDesc = sorted.firstOrNull()?.description
+                    val latestDesc = sortedTransactions.firstOrNull()?.description
                         ?: getString(R.string.none_label)
                     findViewById<TextView>(R.id.tvLatestExpense)?.text =
                         getString(R.string.latest_format, latestDesc)
@@ -253,10 +323,11 @@ class DashboardActivity : AppCompatActivity() {
                         )
 
                     recentExpensesAdapter.updateData(recentTransactions)
+                    Log.d("Dashboard", "Successfully rendered historical update pass containing ${recentTransactions.size} blended transactions.")
                 }
 
             } catch (e: Exception) {
-                Log.e("DashboardActivity", "Error loading dashboard: ${e.message}")
+                Log.e("DashboardActivity", "Error loading dashboard metrics: ${e.message}")
                 e.printStackTrace()
             }
         }

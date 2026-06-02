@@ -1,8 +1,10 @@
 package com.smartspend
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -24,6 +26,7 @@ import java.util.*
 import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import java.io.File
 import androidx.appcompat.app.AlertDialog
 
@@ -64,13 +67,44 @@ class ExpenseActivity : AppCompatActivity() {
 
     private val calendar = Calendar.getInstance()
 
+    private val requestCameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchCameraCaptureIntent()
+        } else {
+            Toast.makeText(this, "Camera permission is required to snap receipt photos.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { setImagePreview(it) }
+        uri?.let { rawUri ->
+            val savedInternalUri = copyUriToInternalStorage(rawUri)
+            if (savedInternalUri != null) {
+                selectedImageUri = savedInternalUri
+                setImagePreview(savedInternalUri)
+            } else {
+                Toast.makeText(this, "Failed to process gallery image", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
-            cameraImageUri?.let { setImagePreview(it) }
+            cameraImageUri?.let { rawCameraUri ->
+                val savedInternalUri = copyUriToInternalStorage(rawCameraUri)
+                if (savedInternalUri != null) {
+                    selectedImageUri = savedInternalUri
+                    setImagePreview(savedInternalUri)
+
+                    try {
+                        val file = File(filesDir, rawCameraUri.lastPathSegment ?: "")
+                        if (file.exists()) file.delete()
+                    } catch (e: Exception) {
+                        Log.w("ExpenseActivity", "Could not delete temporary camera file", e)
+                    }
+                }
+            }
         }
     }
 
@@ -80,10 +114,33 @@ class ExpenseActivity : AppCompatActivity() {
 
         NavigationHelper.setupMenu(this)
 
-        receiptPath = intent.getStringExtra("receiptPath")
-
+        // 1. Always bind your XML layout views FIRST
         bindViews()
-        setupToggleButtons()   // set initial colours before any tap
+
+        // 2. NOW it is safe to extract intent data and modify UI view elements
+        val incomingReceiptPath = intent.getStringExtra("receiptPath")
+        val startInExpenseMode = intent.getBooleanExtra("isExpenseMode", true)
+
+        if (!startInExpenseMode) {
+            applyIncomeSelected()
+        } else {
+            applyExpenseSelected()
+        }
+
+        if (!incomingReceiptPath.isNullOrEmpty()) {
+            receiptPath = incomingReceiptPath
+            val receiptFile = File(incomingReceiptPath)
+            if (receiptFile.exists()) {
+                val fileUri = Uri.fromFile(receiptFile)
+                selectedImageUri = fileUri
+
+                ivImagePreview.setImageURI(fileUri)
+                ivImagePreview.visibility = android.view.View.VISIBLE
+                btnRemoveImage.visibility = android.view.View.VISIBLE
+            }
+        }
+
+        // 3. Continue running the rest of your initializers
         setupDatePicker()
         setupListeners()
         setupCategorySpinner()
@@ -119,10 +176,10 @@ class ExpenseActivity : AppCompatActivity() {
         btnRemoveImage     = findViewById(R.id.btnRemoveImage)
     }
 
-    /** Apply the correct colours immediately on open — Expense is selected by default. */
-    private fun setupToggleButtons() {
+    /* private fun setupToggleButtons() {
         applyExpenseSelected()
     }
+     */
 
     private fun applyExpenseSelected() {
         isExpense = true
@@ -178,12 +235,10 @@ class ExpenseActivity : AppCompatActivity() {
             }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
         }
 
-        // Create Category bottom sheet
         btnCreateCategory.setOnClickListener {
             showCreateCategoryBottomSheet()
         }
 
-        // Quick buttons
         val quickButtons = listOf(1200.0, 700.0, 35.0)
         val quickContainer = findViewById<LinearLayout>(R.id.quick_add_container)
         if (quickContainer != null) {
@@ -199,13 +254,12 @@ class ExpenseActivity : AppCompatActivity() {
                 .setTitle("Choose Image Source")
                 .setItems(arrayOf("Camera", "Gallery")) { _: android.content.DialogInterface, which: Int ->
                     if (which == 0) {
-                        val imageFile = File(filesDir, "temp_image_${System.currentTimeMillis()}.jpg")
-                        cameraImageUri = FileProvider.getUriForFile(
-                            this,
-                            "${packageName}.provider",
-                            imageFile
-                        )
-                        cameraLauncher.launch(cameraImageUri!!)
+                        // Check if permission is already granted dynamically
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            launchCameraCaptureIntent()
+                        } else {
+                            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
                     } else {
                         galleryLauncher.launch("image/*")
                     }
@@ -231,10 +285,19 @@ class ExpenseActivity : AppCompatActivity() {
         }
     }
 
+    private fun launchCameraCaptureIntent() {
+        val imageFile = File(filesDir, "temp_image_${System.currentTimeMillis()}.jpg")
+        cameraImageUri = FileProvider.getUriForFile(
+            this,
+            "${packageName}.provider",
+            imageFile
+        )
+        cameraLauncher.launch(cameraImageUri!!)
+    }
+
     private fun showCreateCategoryBottomSheet() {
         val bottomSheet = BottomSheetDialog(this)
 
-        // Build a simple layout programmatically so no extra XML file is needed
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(64, 48, 64, 48)
@@ -278,11 +341,9 @@ class ExpenseActivity : AppCompatActivity() {
                 db.categoryDao().insert(newCategory)
                 Log.d("ExpenseActivity", "New category '$name' inserted")
 
-                // Sync to Firebase
                 val firebaseRepo = FirebaseRepository()
                 firebaseRepo.saveCategory(newCategory)
 
-                // Reload spinner
                 reloadCategorySpinner(userId)
 
                 runOnUiThread {
@@ -312,8 +373,6 @@ class ExpenseActivity : AppCompatActivity() {
             )
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spCategory.adapter = adapter
-            // Select the newly added item (last in list since sorted A-Z it may not be last,
-            // but selecting last is fine — user can change it)
             spCategory.setSelection(names.size - 1)
         }
     }
@@ -404,81 +463,68 @@ class ExpenseActivity : AppCompatActivity() {
         val categoryName = selectedCategory?.categoryName ?: ""
 
         val dbDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+        val currentTimestamp = System.currentTimeMillis() // 🌟 CRITICAL: Dynamic sorting link
 
         lifecycleScope.launch {
             try {
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                Log.d("ExpenseActivity", "Saving expense for userId: $userId")
-                val expense = Expense(
-                    userId = userId,
-                    amount = amount,
-                    description = description.ifEmpty { if (isExpense) "Expense" else "Income" },
-                    date = dbDate,
-                    startTime = this@ExpenseActivity.startTime,
-                    endTime = this@ExpenseActivity.endTime,
-                    categoryId = categoryId,
-                    receiptPath = receiptPath,
-                    imagePath = selectedImageUri?.toString()
-                )
-
-                val newId = db.expenseDao().insert(expense)
-                Log.d("ExpenseActivity", "Expense inserted into Room DB with id=$newId")
-
                 val firebaseRepo = FirebaseRepository()
+                val imagePathString = selectedImageUri?.toString() ?: receiptPath
 
-                val imageUrl = if (selectedImageUri != null) {
-                    firebaseRepo.uploadExpenseImage(selectedImageUri!!, newId.toInt())
-                } else null
+                if (isExpense) {
+                    // ─── PATH A: SAVING AN EXPENSE ──────────────────────────
+                    Log.d("ExpenseActivity", "Saving pure expense for userId: $userId")
+                    val expense = Expense(
+                        userId = userId,
+                        amount = amount,
+                        description = description.ifEmpty { "Expense" },
+                        date = dbDate,
+                        startTime = this@ExpenseActivity.startTime,
+                        endTime = this@ExpenseActivity.endTime,
+                        categoryId = categoryId,
+                        receiptPath = imagePathString,
+                        imagePath = imagePathString,
+                        createdAt = currentTimestamp // Set explicit timestamp
+                    )
 
-                if (imageUrl != null) {
-                    db.expenseDao().updateImagePath(newId.toInt(), imageUrl)
-                    Log.d("ExpenseActivity", "Room imagePath updated with Firebase URL")
-                }
+                    // 1. Write locally to Room DB
+                    db.expenseDao().insert(expense)
 
-                val savedExpense = expense.copy(
-                    expenseId = newId.toInt(),
-                    imagePath = imageUrl ?: selectedImageUri?.toString()
-                )
+                    // 2. Sync to Firebase Cloud Repository
+                    firebaseRepo.saveExpense(expense)
 
-                if (!isExpense) {
+                } else {
+                    // ─── PATH B: SAVING AN INCOME ──────────────────────────
+                    Log.d("ExpenseActivity", "Saving income stream for userId: $userId")
                     val income = com.smartspend.data.entity.Income(
                         userId = userId,
-                        source = description.ifEmpty { "Income" },
+                        source = description.ifEmpty { "Income Stream" },
                         amount = amount,
                         date = dbDate,
-                        description = description.ifEmpty { null }
+                        imagePath = imagePathString,
+                        createdAt = currentTimestamp // Set explicit timestamp
                     )
-                    val incomeId = db.incomeDao().insert(income)
-                    val savedIncome = income.copy(id = incomeId.toInt())
-                    firebaseRepo.saveIncome(savedIncome)
-                    Log.d("ExpenseActivity", "Income inserted with id=$incomeId")
+
+                    // 1. Write locally to Room DB
+                    db.incomeDao().insert(income)
+
+                    // 2. Sync to Firebase Cloud Repository
+                    firebaseRepo.saveIncome(income)
                 }
 
-                val synced = firebaseRepo.saveExpense(savedExpense, categoryName)
-                if (synced) {
-                    Log.d("ExpenseActivity", "Expense synced to Firebase")
-                } else {
-                    Log.w("ExpenseActivity", "Firebase sync failed, saved locally only")
-                }
-
+                // ─── SUCCESS HANDOFF ROUTING ────────────────────────────────
                 runOnUiThread {
-                    Toast.makeText(
-                        this@ExpenseActivity,
-                        if (isExpense) "Expense saved successfully!" else "Income saved successfully!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    clearForm()
-                    val intent = Intent(this@ExpenseActivity, DashboardActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    startActivity(intent)
+                    Toast.makeText(this@ExpenseActivity, "Transaction saved successfully!", Toast.LENGTH_SHORT).show()
+                    // Redirect safely back to the Dashboard screen
+                    NavigationHelper.goToDashboard(this@ExpenseActivity)
                     finish()
                 }
 
             } catch (e: Exception) {
+                Log.e("ExpenseActivity", "Error saving transaction entry", e)
                 runOnUiThread {
-                    Toast.makeText(this@ExpenseActivity, "Error saving transaction", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ExpenseActivity, "Failed to save record", Toast.LENGTH_LONG).show()
                 }
-                e.printStackTrace()
             }
         }
     }
@@ -499,9 +545,34 @@ class ExpenseActivity : AppCompatActivity() {
     }
 
     private fun setImagePreview(uri: Uri) {
-        selectedImageUri = uri
-        ivImagePreview.setImageURI(uri)
-        ivImagePreview.visibility = android.view.View.VISIBLE
-        btnRemoveImage.visibility = android.view.View.VISIBLE
+        runOnUiThread {
+            try {
+                ivImagePreview.setImageURI(null)
+                ivImagePreview.setImageURI(uri)
+                ivImagePreview.visibility = android.view.View.VISIBLE
+                btnRemoveImage.visibility = android.view.View.VISIBLE
+            } catch (e: Exception) {
+                Log.e("ExpenseActivity", "Failed to render preview layout stream", e)
+                Toast.makeText(this, "Failed to load image preview window", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
+    private fun copyUriToInternalStorage(uri: Uri): Uri? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val permanentFile = File(filesDir, "receipt_permanent_${System.currentTimeMillis()}.jpg")
+
+            inputStream.use { input ->
+                permanentFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Uri.fromFile(permanentFile)
+        } catch (e: Exception) {
+            Log.e("ExpenseActivity", "Failed to copy image to internal storage", e)
+            null
+        }
     }
 }

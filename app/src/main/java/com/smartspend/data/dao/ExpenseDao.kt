@@ -4,16 +4,30 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Embedded
 import com.smartspend.data.entity.Expense
 
 @Dao
 interface ExpenseDao {
 
-    @Insert
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun insert(expense: Expense): Long
 
     @Query("SELECT * FROM expenses WHERE userId = :userId")
     suspend fun getAllExpenses(userId: String): List<Expense>
+
+    /**
+     * Fetches all expenses for a user and embeds the corresponding category name
+     * by performing an INNER JOIN on the categories table. Used to prevent generic
+     * "Expense" descriptions on the UI feed.
+     */
+    @Query("""
+        SELECT e.*, c.categoryName 
+        FROM expenses e
+        INNER JOIN categories c ON e.categoryId = c.categoryId
+        WHERE e.userId = :userId
+    """)
+    suspend fun getAllExpensesWithCategoryNames(userId: String): List<ExpenseWithCategory>
 
     @Delete
     suspend fun delete(expense: Expense)
@@ -21,7 +35,7 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE userId = :userId AND date >= :startDate AND date <= :endDate")
     suspend fun getExpensesByDateRange(userId: String, startDate: String, endDate: String): List<Expense>
 
-    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE userId = :userId AND date >= :startDate AND date <= :endDate")
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE userId = :userId AND date >= :startDate AND date <= :endDate AND categoryId != -1")
     suspend fun getTotalByDateRange(userId: String, startDate: String, endDate: String): Double
 
     @Query("SELECT categoryId, SUM(amount) as total FROM expenses WHERE userId = :userId AND date >= :startDate AND date <= :endDate GROUP BY categoryId ORDER BY total DESC LIMIT 4")
@@ -59,6 +73,15 @@ interface ExpenseDao {
     @Query("UPDATE expenses SET imagePath = :imagePath WHERE expenseId = :expenseId")
     suspend fun updateImagePath(expenseId: Int, imagePath: String)
 }
+
+/**
+ * Data wrapper class combining the raw Expense entity with its relational Category Name string.
+ * Used by [ExpenseDao.getAllExpensesWithCategoryNames].
+ */
+data class ExpenseWithCategory(
+    @Embedded val expense: Expense,
+    val categoryName: String
+)
 
 data class CategoryTotal(
     val categoryId: Int,

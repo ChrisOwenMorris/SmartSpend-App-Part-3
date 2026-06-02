@@ -17,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.data.SessionManager
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 class LoginActivity : AppCompatActivity() {
 
@@ -79,15 +80,32 @@ class LoginActivity : AppCompatActivity() {
 
                 if (success) {
                     Log.d("LoginActivity", "Login successful for: $email")
-                    sharedPrefs.edit().putBoolean("normal_login_done", true).apply()
+                    sharedPrefs.edit { putBoolean("normal_login_done", true) }
 
                     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                     if (uid.isNotEmpty()) {
                         val db = (application as SmartSpendApp).database
+
+                        // ─── SYNC PASS 1: EXPENSES ───────────────────────────────────
                         val expenses = firebaseRepo.getExpenses()
                         for (expenseMap in expenses) {
                             try {
+                                val parsedId = when (val rawId = expenseMap["expenseId"]) {
+                                    is Long -> rawId.toInt()
+                                    is Int -> rawId
+                                    is String -> rawId.toIntOrNull() ?: 0
+                                    else -> 0
+                                }
+
+                                val rawCreatedAt = expenseMap["syncedAt"] ?: expenseMap["createdAt"]
+                                val parsedCreatedAt = when (rawCreatedAt) {
+                                    is Long -> rawCreatedAt
+                                    is Double -> rawCreatedAt.toLong()
+                                    else -> System.currentTimeMillis()
+                                }
+
                                 val expense = com.smartspend.data.entity.Expense(
+                                    expenseId = parsedId,
                                     userId = uid,
                                     amount = (expenseMap["amount"] as? Double) ?: 0.0,
                                     description = (expenseMap["description"] as? String) ?: "",
@@ -95,14 +113,54 @@ class LoginActivity : AppCompatActivity() {
                                     startTime = (expenseMap["startTime"] as? String) ?: "00:00",
                                     endTime = (expenseMap["endTime"] as? String) ?: "00:00",
                                     categoryId = ((expenseMap["categoryId"] as? Long)?.toInt()) ?: 1,
-                                    receiptPath = expenseMap["receiptPath"] as? String
+                                    receiptPath = expenseMap["receiptPath"] as? String,
+                                    imagePath = expenseMap["imagePath"] as? String,
+                                    createdAt = parsedCreatedAt
                                 )
                                 db.expenseDao().insert(expense)
                             } catch (e: Exception) {
                                 Log.e("LoginActivity", "Failed to restore expense: ${e.message}")
                             }
                         }
-                        Log.d("LoginActivity", "User data restored from Firestore to Room")
+                        Log.d("LoginActivity", "Expenses data restored from Firestore to Room")
+
+                        try {
+                            val incomes = firebaseRepo.getIncomes()
+                            for (incomeMap in incomes) {
+                                try {
+                                    val parsedIncomeId = when (val rawId = incomeMap["id"]) {
+                                        is Long -> rawId.toInt()
+                                        is Int -> rawId
+                                        is String -> rawId.toIntOrNull() ?: 0
+                                        else -> 0
+                                    }
+
+                                    val rawCreatedAt = incomeMap["syncedAt"] ?: incomeMap["createdAt"]
+                                    val parsedCreatedAt = when (rawCreatedAt) {
+                                        is Long -> rawCreatedAt
+                                        is Double -> rawCreatedAt.toLong()
+                                        else -> System.currentTimeMillis()
+                                    }
+
+                                    val income = com.smartspend.data.entity.Income(
+                                        id = parsedIncomeId,
+                                        userId = uid,
+                                        source = (incomeMap["source"] as? String) ?: "Income",
+                                        amount = (incomeMap["amount"] as? Double) ?: 0.0,
+                                        date = (incomeMap["date"] as? String) ?: "",
+                                        description = incomeMap["description"] as? String,
+                                        createdAt = parsedCreatedAt,
+                                        imagePath = incomeMap["imagePath"] as? String // Restores custom attachment URL references
+                                    )
+                                    db.incomeDao().insert(income)
+                                } catch (e: Exception) {
+                                    Log.e("LoginActivity", "Failed to parse individual income entry: ${e.message}")
+                                }
+                            }
+                            Log.d("LoginActivity", "Income history restored from Firestore to Room")
+                        } catch (e: Exception) {
+                            Log.e("LoginActivity", "Failed to complete income table restoration loop: ${e.message}")
+                        }
                     }
 
                     goToDashboard()

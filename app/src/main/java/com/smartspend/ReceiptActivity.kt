@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
+import android.graphics.Color
+import android.util.Log
 
 class ReceiptActivity : AppCompatActivity() {
 
@@ -58,10 +60,25 @@ class ReceiptActivity : AppCompatActivity() {
                     @Suppress("DEPRECATION")
                     result.data?.extras?.getParcelable("data")
                 }
-                photo?.let {
-                    previewImage.setImageBitmap(it)
-                    previewImage.visibility = ImageView.VISIBLE
-                    Toast.makeText(this, "Camera image captured", Toast.LENGTH_SHORT).show()
+
+                photo?.let { bitmap ->
+                    val fileName = "camera_receipt_${System.currentTimeMillis()}.jpg"
+                    val file = File(filesDir, fileName)
+                    try {
+                        FileOutputStream(file).use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        }
+                        val permanentPath = file.absolutePath
+
+                        previewImage.setImageBitmap(bitmap)
+                        previewImage.visibility = ImageView.VISIBLE
+
+                        // 🌟 FIXED: Ask the user where they want to link this receipt
+                        showTransactionTypeDialog(permanentPath)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(this, "Failed to save camera photo", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -74,12 +91,29 @@ class ReceiptActivity : AppCompatActivity() {
                     val permanentPath = saveImageToInternalStorage(uri)
                     previewImage.setImageURI(uri)
                     previewImage.visibility = ImageView.VISIBLE
-                    val intent = Intent(this, ExpenseActivity::class.java)
-                    intent.putExtra("receiptPath", permanentPath)
-                    startActivity(intent)
+
+                    // 🌟 FIXED: Ask the user where they want to link this receipt
+                    showTransactionTypeDialog(permanentPath)
                 }
             }
         }
+
+    // 🌟 NEW HELPER: Let the user choose the transaction type path
+    private fun showTransactionTypeDialog(imagePath: String) {
+        val options = arrayOf("Link to New Expense", "Link to New Income")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Link Receipt To:")
+            .setItems(options) { _, which ->
+                val intent = Intent(this, ExpenseActivity::class.java).apply {
+                    putExtra("receiptPath", imagePath)
+                    // Pass a flag to tell ExpenseActivity which mode to open automatically
+                    putExtra("isExpenseMode", which == 0)
+                }
+                startActivity(intent)
+            }
+            .setCancelable(false)
+            .show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,38 +247,100 @@ class ReceiptActivity : AppCompatActivity() {
     ) {
         lifecycleScope.launch {
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-            val expenses = db.expenseDao().getAllExpenses(userId)
+
+            // 1. Fetch raw datasets from Room
+            val rawExpenses = db.expenseDao().getAllExpenses(userId)
+            val rawIncomes = try {
+                db.incomeDao().getAllIncome(userId)
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            // 2. Convert Incomes safely. If an item has an expense footprint, respect its type!
+            val convertedIncomes = rawIncomes.map { income ->
+                // Check if the source name or description indicates it's actually an expense
+                val representsExpense = income.source.contains("Forex", ignoreCase = true) || income.amount < 0
+
+                com.smartspend.data.entity.Expense(
+                    expenseId = income.id,
+                    userId = income.userId,
+                    amount = kotlin.math.abs(income.amount), // Keep absolute value for formatting
+                    description = if (income.source.isNullOrEmpty()) "Income Stream" else income.source,
+                    date = income.date,
+                    startTime = "00:00",
+                    endTime = "00:00",
+                    // Use -1 ONLY for pure incomes. If it's an expense like Forex, treat it as one!
+                    categoryId = if (representsExpense) 999 else -1,
+                    receiptPath = income.imagePath,
+                    imagePath = income.imagePath,
+                    createdAt = income.createdAt
+                )
+            }
 
             runOnUiThread {
+                // Find and clear the dynamic list layout container
+                val container = findViewById<LinearLayout>(R.id.recentReceiptsContainer)
                 container.removeAllViews()
 
-                val filtered = expenses
-                    .filter { expense ->
+                // 🌟 FIX: The global 'previewImage' initialized in onCreate() is used directly here!
+
+                // 3. Combine and sort strictly by creation timestamp
+                val masterFeedList = rawExpenses + convertedIncomes
+                val filtered = masterFeedList
+                    .filter { transaction ->
                         val matchesSearch = search.isEmpty() ||
-                                expense.description.contains(search, ignoreCase = true)
-                        val matchesCategory = categoryId == -1 || expense.categoryId == categoryId
-                        val matchesDate = date.isEmpty() || expense.date == date
+                                transaction.description.contains(search, ignoreCase = true)
+                        val matchesCategory = categoryId == -1 || transaction.categoryId == categoryId
+                        val matchesDate = date.isEmpty() || transaction.date == date
+
                         matchesSearch && matchesCategory && matchesDate
                     }
-                    .sortedByDescending { it.date }
+                    .sortedByDescending { it.createdAt }
 
-                // Auto-preview the most recent receipt image
-                val mostRecentWithImage = filtered.firstOrNull { !it.receiptPath.isNullOrEmpty() }
+                // 🌟 Update Hero Preview Window at the top of the layout
+                val mostRecentWithImage = filtered.firstOrNull { !it.imagePath.isNullOrEmpty() || !it.receiptPath.isNullOrEmpty() }
+
                 if (mostRecentWithImage != null) {
-                    val file = File(mostRecentWithImage.receiptPath!!)
-                    if (file.exists()) {
-                        previewImage.setImageURI(Uri.fromFile(file))
-                        previewImage.visibility = ImageView.VISIBLE
+                    val path = mostRecentWithImage.imagePath ?: mostRecentWithImage.receiptPath ?: ""
+                    Log.d("ReceiptHeroDebug", "Found most recent transaction with image! Path: '$path'")
+
+                    if (path.isNotEmpty()) {
+                        try {
+                            previewImage.setImageURI(null)
+
+                            // 🌟 FIX: Support 'file://' scheme prefixes here just like in the list items!
+                            if (path.startsWith("http") || path.startsWith("content") || path.startsWith("file")) {
+                                Log.d("ReceiptHeroDebug", "Loading via Uri.parse...")
+                                previewImage.setImageURI(Uri.parse(path))
+                            } else {
+                                Log.d("ReceiptHeroDebug", "Loading via absolute File path...")
+                                val file = File(path)
+                                if (file.exists()) {
+                                    previewImage.setImageURI(Uri.fromFile(file))
+                                } else {
+                                    Log.w("ReceiptHeroDebug", "File path string does not exist on disk storage!")
+                                }
+                            }
+                            previewImage.visibility = android.view.View.VISIBLE
+                            Log.d("ReceiptHeroDebug", "Hero preview visibility set to VISIBLE")
+                        } catch (e: Exception) {
+                            Log.e("ReceiptHeroDebug", "CRASH in Hero Image Rendering logic!", e)
+                            previewImage.visibility = android.view.View.GONE
+                        }
+                    } else {
+                        Log.w("ReceiptHeroDebug", "Path string is empty.")
+                        previewImage.visibility = android.view.View.GONE
                     }
                 } else {
-                    previewImage.visibility = ImageView.GONE
+                    Log.w("ReceiptHeroDebug", "No transaction with an image path was found in the database list.")
+                    previewImage.visibility = android.view.View.GONE
                 }
 
-                // List ALL filtered expenses
-                for (expense in filtered) {
+                // 4. Generate transaction item cards dynamically
+                for (transaction in filtered) {
                     val card = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.HORIZONTAL
-                        setPadding(24, 24, 24, 24)
+                        setPadding(32, 24, 32, 24)
                         gravity = Gravity.CENTER_VERTICAL
                         val params = LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -255,28 +351,38 @@ class ReceiptActivity : AppCompatActivity() {
                         setBackgroundResource(R.drawable.card_background)
                     }
 
+                    // 🌟 FIX: Exact Dashboard Image Engine Replication
                     val image = ImageView(this@ReceiptActivity).apply {
-                        val size = 140
+                        val size = 130
                         layoutParams = LinearLayout.LayoutParams(size, size)
                         scaleType = ImageView.ScaleType.CENTER_CROP
 
-                        val hasImage = !expense.receiptPath.isNullOrEmpty()
-                        if (hasImage) {
-                            val file = File(expense.receiptPath!!)
-                            if (file.exists()) {
-                                setImageURI(Uri.fromFile(file))
-                            } else {
+                        val path = transaction.imagePath ?: transaction.receiptPath
+                        if (!path.isNullOrEmpty()) {
+                            try {
+                                setImageURI(null) // Reset rendering canvas cache
+
+                                // Direct URI parsing handles web URLs, content URIs, and local paths seamlessly
+                                if (path.startsWith("http") || path.startsWith("content") || path.startsWith("file")) {
+                                    setImageURI(Uri.parse(path))
+                                } else {
+                                    // If it's a raw absolute path string, handle it directly via file conversion
+                                    val file = File(path)
+                                    setImageURI(Uri.fromFile(file))
+                                }
+                            } catch (e: Exception) {
+                                Log.e("ReceiptActivity", "Image binding error for path: $path", e)
                                 setImageResource(android.R.drawable.ic_menu_report_image)
                             }
+
+                            // Passes the valid path string straight to the preview panel
                             setOnClickListener {
-                                val intent = Intent(
-                                    this@ReceiptActivity,
-                                    ReceiptPreviewActivity::class.java
-                                )
-                                intent.putExtra("receiptPath", expense.receiptPath)
+                                val intent = Intent(this@ReceiptActivity, ReceiptPreviewActivity::class.java)
+                                intent.putExtra("receiptPath", path)
                                 startActivity(intent)
                             }
                         } else {
+                            // True fallback if no path data exists at all
                             setImageResource(android.R.drawable.ic_menu_report_image)
                             alpha = 0.3f
                         }
@@ -284,35 +390,38 @@ class ReceiptActivity : AppCompatActivity() {
 
                     val textContainer = LinearLayout(this@ReceiptActivity).apply {
                         orientation = LinearLayout.VERTICAL
-                        val params = LinearLayout.LayoutParams(
-                            0,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            1f
-                        )
-                        params.setMargins(24, 0, 0, 0)
+                        val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        params.setMargins(32, 0, 0, 0)
                         layoutParams = params
                     }
 
-                    val categoryName = loadedCategories
-                        .firstOrNull { it.categoryId == expense.categoryId }
-                        ?.categoryName ?: "Uncategorised"
+                    // Pure income items are explicitly marked with categoryId == -1
+                    val isIncomeItem = transaction.categoryId == -1
 
                     val title = TextView(this@ReceiptActivity).apply {
-                        text = if (expense.description.isBlank()) "Expense" else expense.description
-                        textSize = 16f
+                        text = transaction.description
+                        textSize = 15f
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setTextColor(Color.parseColor("#333333"))
                     }
                     val dateTv = TextView(this@ReceiptActivity).apply {
-                        text = expense.date
+                        text = transaction.date
                         textSize = 12f
+                        setTextColor(Color.GRAY)
                     }
                     val categoryTv = TextView(this@ReceiptActivity).apply {
-                        text = categoryName
+                        text = if (isIncomeItem) "Income Stream" else "Expense"
                         textSize = 12f
-                        setTextColor(android.graphics.Color.parseColor("#00C896"))
+                        setTypeface(null, android.graphics.Typeface.ITALIC)
+                        setTextColor(Color.parseColor(if (isIncomeItem) "#00C896" else "#E91E63"))
                     }
+
+                    // 🌟 Color Logic: Green for Income (+), Vibrant Crimson Red for Expenses (-)
                     val amount = TextView(this@ReceiptActivity).apply {
-                        text = "R %.2f".format(expense.amount)
+                        text = if (isIncomeItem) "+R %.2f".format(transaction.amount) else "-R %.2f".format(transaction.amount)
                         textSize = 16f
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setTextColor(Color.parseColor(if (isIncomeItem) "#00C896" else "#E91E63"))
                     }
 
                     textContainer.addView(title)
@@ -328,10 +437,10 @@ class ReceiptActivity : AppCompatActivity() {
 
                 if (filtered.isEmpty()) {
                     val empty = TextView(this@ReceiptActivity).apply {
-                        text = "No transactions found"
+                        text = "No records found matching filters"
                         textSize = 14f
                         gravity = Gravity.CENTER
-                        setPadding(0, 32, 0, 0)
+                        setPadding(0, 48, 0, 0)
                     }
                     container.addView(empty)
                 }
