@@ -16,7 +16,6 @@ import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
@@ -44,9 +43,11 @@ class ReceiptActivity : AppCompatActivity() {
     private var loadedCategories: List<Category> = emptyList()
     private var selectedCategoryFilterId: Int = -1  // -1 means "All"
 
-    companion object {
-        private const val CAMERA_PERMISSION_CODE = 300
-    }
+    private val cameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) openCamera()
+            else Toast.makeText(this, "Camera permission required", Toast.LENGTH_SHORT).show()
+        }
 
     private val cameraLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -96,7 +97,15 @@ class ReceiptActivity : AppCompatActivity() {
         val btnGallery = findViewById<Button>(R.id.btnGallery)
         val cameraCard = findViewById<LinearLayout>(R.id.topCardContainer)
 
-        cameraCard.setOnClickListener { openCamera() }
+        cameraCard.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                openCamera()
+            } else {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
         btnGallery.setOnClickListener { openGallery() }
 
         setupCategoryFilterSpinner()
@@ -331,18 +340,8 @@ class ReceiptActivity : AppCompatActivity() {
     }
 
     private fun openCamera() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERMISSION_CODE
-            )
-        } else {
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            cameraLauncher.launch(intent)
-        }
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        cameraLauncher.launch(intent)
     }
 
     private fun openGallery() {
@@ -350,21 +349,7 @@ class ReceiptActivity : AppCompatActivity() {
         galleryLauncher.launch(intent)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            openCamera()
-        } else {
-            Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
-        }
-    }
 }
+
 
 

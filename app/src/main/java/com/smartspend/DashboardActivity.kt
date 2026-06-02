@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
+import com.smartspend.data.firebase.FirebaseRepository
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -159,6 +160,12 @@ class DashboardActivity : AppCompatActivity() {
                     editor.putFloat("monthly_budget", budget)
                 }
                 editor.apply()
+
+                lifecycleScope.launch {
+                    val firebaseRepo = FirebaseRepository()
+                    firebaseRepo.saveBudget(monthIndex, budget.toDouble())
+                    Log.d("Dashboard", "Budget synced to Firebase")
+                }
 
                 loadDashboardData()
                 Toast.makeText(

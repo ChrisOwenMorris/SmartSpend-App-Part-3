@@ -11,36 +11,22 @@ import com.smartspend.data.entity.Income
 import com.smartspend.data.entity.SpendingGoal
 import kotlinx.coroutines.tasks.await
 
-/**
- * FirebaseRepository handles all communication with Firebase services.
- * This includes Firebase Authentication, Firestore (online database),
- * and Firebase Storage (for receipt images).
- *
- * Reference: Firebase Android documentation - https://firebase.google.com/docs/android/setup
- */
 class FirebaseRepository {
 
-    // Firebase service instances
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 
-    // The currently logged-in user's UID — used to scope all data per user
     private val currentUserId: String?
         get() = auth.currentUser?.uid
 
     // ─── AUTH ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Register a new user with email and password using Firebase Authentication.
-     * Returns true if successful, false otherwise.
-     */
     suspend fun registerUser(email: String, password: String, name: String): Boolean {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: return false
 
-            // Save the user profile to Firestore users collection
             val userMap = hashMapOf(
                 "uid" to uid,
                 "name" to name,
@@ -56,10 +42,6 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Sign in an existing user with email and password.
-     * Returns true if successful, false otherwise.
-     */
     suspend fun loginUser(email: String, password: String): Boolean {
         return try {
             auth.signInWithEmailAndPassword(email, password).await()
@@ -71,28 +53,38 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Sign out the current user from Firebase.
-     */
     fun logoutUser() {
         auth.signOut()
         Log.d("FirebaseRepo", "User signed out")
     }
 
-    /**
-     * Check if a user is currently logged in.
-     */
     fun isUserLoggedIn(): Boolean = auth.currentUser != null
+
+    // ─── USERNAME HELPER ──────────────────────────────────────────────────────
+
+    private suspend fun getCurrentUserName(): String {
+        val uid = currentUserId ?: return "Unknown"
+        return try {
+            val doc = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+            doc.getString("name") ?: "Unknown"
+        } catch (e: Exception) {
+            Log.e("FirebaseRepo", "Failed to get username: ${e.message}")
+            "Unknown"
+        }
+    }
 
     // ─── EXPENSES ─────────────────────────────────────────────────────────────
 
-    /**
-     * Save a single expense to Firestore under the current user's expenses subcollection.
-     * Path: users/{userId}/expenses/{expenseId}
-     */
     suspend fun saveExpense(expense: Expense, categoryName: String = ""): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val desc = expense.description.replace(" ", "_").take(30)
+            val docName = "${userName.replace(" ", "_")}_${desc}_${expense.expenseId}"
+
             val expenseMap = hashMapOf(
                 "expenseId" to expense.expenseId,
                 "amount" to expense.amount,
@@ -103,15 +95,16 @@ class FirebaseRepository {
                 "category" to categoryName,
                 "receiptPath" to (expense.receiptPath ?: ""),
                 "imagePath" to (expense.imagePath ?: ""),
+                "userName" to userName,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("expenses")
-                .document(expense.expenseId.toString())
+                .document(docName)
                 .set(expenseMap)
                 .await()
-            Log.d("FirebaseRepo", "Expense saved to Firestore: ${expense.expenseId}")
+            Log.d("FirebaseRepo", "Expense saved to Firestore: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save expense: ${e.message}")
@@ -119,10 +112,6 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Fetch all expenses for the current user from Firestore.
-     * Returns a list of expense maps, or empty list on failure.
-     */
     suspend fun getExpenses(): List<Map<String, Any>> {
         val uid = currentUserId ?: return emptyList()
         return try {
@@ -141,25 +130,25 @@ class FirebaseRepository {
 
     // ─── CATEGORIES ────────────────────────────────────────────────────────────
 
-    /**
-     * Save a category to Firestore under the current user's categories subcollection.
-     * Path: users/{userId}/categories/{categoryId}
-     */
     suspend fun saveCategory(category: Category): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_${category.categoryName.replace(" ", "_")}_${category.categoryId}"
+
             val categoryMap = hashMapOf(
                 "categoryId" to category.categoryId,
                 "categoryName" to category.categoryName,
+                "userName" to userName,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("categories")
-                .document(category.categoryId.toString())
+                .document(docName)
                 .set(categoryMap)
                 .await()
-            Log.d("FirebaseRepo", "Category saved: ${category.categoryName}")
+            Log.d("FirebaseRepo", "Category saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save category: ${e.message}")
@@ -167,9 +156,6 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Fetch all categories for the current user from Firestore.
-     */
     suspend fun getCategories(): List<Map<String, Any>> {
         val uid = currentUserId ?: return emptyList()
         return try {
@@ -187,13 +173,12 @@ class FirebaseRepository {
 
     // ─── GOALS ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Save a spending goal to Firestore.
-     * Path: users/{userId}/goals/{goalId}
-     */
     suspend fun saveGoal(goal: Goal): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_${goal.goalName.replace(" ", "_").take(30)}_${goal.goalId}"
+
             val goalMap = hashMapOf(
                 "goalId" to goal.goalId,
                 "userId" to goal.userId,
@@ -203,15 +188,16 @@ class FirebaseRepository {
                 "targetDate" to goal.targetDate,
                 "imagePath" to (goal.imagePath ?: ""),
                 "isCompleted" to goal.isCompleted,
+                "userName" to userName,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("goals")
-                .document(goal.goalId.toString())
+                .document(docName)
                 .set(goalMap)
                 .await()
-            Log.d("FirebaseRepo", "Goal saved: ${goal.goalName}")
+            Log.d("FirebaseRepo", "Goal saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save goal: ${e.message}")
@@ -221,29 +207,59 @@ class FirebaseRepository {
 
     // ─── INCOME ────────────────────────────────────────────────────────────────
 
+    suspend fun saveIncome(income: Income): Boolean {
+        val uid = currentUserId ?: return false
+        return try {
+            val userName = getCurrentUserName()
+            val desc = (income.description ?: income.source).replace(" ", "_").take(30)
+            val docName = "${userName.replace(" ", "_")}_${desc}_${income.id}"
+
+            val incomeMap = hashMapOf(
+                "id" to income.id,
+                "source" to income.source,
+                "amount" to income.amount,
+                "date" to income.date,
+                "description" to (income.description ?: ""),
+                "userName" to userName,
+                "syncedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users")
+                .document(uid)
+                .collection("income")
+                .document(docName)
+                .set(incomeMap)
+                .await()
+            Log.d("FirebaseRepo", "Income saved: $docName")
+            true
+        } catch (e: Exception) {
+            Log.e("FirebaseRepo", "Failed to save income: ${e.message}")
+            false
+        }
+    }
+
     // ─── SPENDING GOALS ────────────────────────────────────────────────────────
 
-    /**
-     * Save a spending goal (min/max monthly) to Firestore.
-     * Path: users/{userId}/spending_goals/{month}
-     */
     suspend fun saveSpendingGoal(goal: SpendingGoal): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_spending_goal_${goal.month}"
+
             val goalMap = hashMapOf(
                 "id" to goal.id,
                 "minMonthlySpend" to goal.minMonthlySpend,
                 "maxMonthlySpend" to goal.maxMonthlySpend,
                 "month" to goal.month,
+                "userName" to userName,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("spending_goals")
-                .document(goal.month)
+                .document(docName)
                 .set(goalMap)
                 .await()
-            Log.d("FirebaseRepo", "Spending goal saved for: ${goal.month}")
+            Log.d("FirebaseRepo", "Spending goal saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save spending goal: ${e.message}")
@@ -251,11 +267,35 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Uploads a receipt image to Firebase Storage.
-     * Returns the download URL string or null on failure.
-     * Reference: https://firebase.google.com/docs/storage/android/upload-files
-     */
+    // ─── BUDGETS ───────────────────────────────────────────────────────────────
+
+    suspend fun saveBudget(month: Int, amount: Double): Boolean {
+        val uid = currentUserId ?: return false
+        return try {
+            val userName = getCurrentUserName()
+            val budgetMap = hashMapOf(
+                "month" to month,
+                "amount" to amount,
+                "userName" to userName,
+                "syncedAt" to System.currentTimeMillis()
+            )
+            val docName = "${userName.replace(" ", "_")}_budget_month_$month"
+            firestore.collection("users")
+                .document(uid)
+                .collection("budgets")
+                .document(docName)
+                .set(budgetMap)
+                .await()
+            Log.d("FirebaseRepo", "Budget saved for month $month: $amount")
+            true
+        } catch (e: Exception) {
+            Log.e("FirebaseRepo", "Failed to save budget: ${e.message}")
+            false
+        }
+    }
+
+    // ─── STORAGE ───────────────────────────────────────────────────────────────
+
     suspend fun uploadExpenseImage(
         localUri: android.net.Uri,
         expenseId: Int
@@ -274,32 +314,22 @@ class FirebaseRepository {
         }
     }
 
-    /**
-     * Save an income entry to Firestore.
-     * Path: users/{userId}/income/{id}
-     */
-    suspend fun saveIncome(income: Income): Boolean {
-        val uid = currentUserId ?: return false
+    suspend fun uploadPdfReport(
+        localUri: android.net.Uri,
+        fileName: String
+    ): String? {
+        val uid = currentUserId ?: return null
         return try {
-            val incomeMap = hashMapOf(
-                "id" to income.id,
-                "source" to income.source,
-                "amount" to income.amount,
-                "date" to income.date,
-                "description" to (income.description ?: ""),
-                "syncedAt" to System.currentTimeMillis()
-            )
-            firestore.collection("users")
-                .document(uid)
-                .collection("income")
-                .document(income.id.toString())
-                .set(incomeMap)
-                .await()
-            Log.d("FirebaseRepo", "Income saved: ${income.id}")
-            true
+            val userName = getCurrentUserName().replace(" ", "_")
+            val ref = storage.reference
+                .child("users/$uid/reports/${userName}_$fileName")
+            ref.putFile(localUri).await()
+            val downloadUrl = ref.downloadUrl.await().toString()
+            Log.d("FirebaseRepo", "PDF uploaded to Firebase Storage: $downloadUrl")
+            downloadUrl
         } catch (e: Exception) {
-            Log.e("FirebaseRepo", "Failed to save income: ${e.message}")
-            false
+            Log.e("FirebaseRepo", "PDF upload failed: ${e.message}")
+            null
         }
     }
 }

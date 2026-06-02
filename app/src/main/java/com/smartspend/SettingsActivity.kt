@@ -2,6 +2,7 @@ package com.smartspend
 
 import android.Manifest
 import android.app.NotificationChannel
+import android.util.Log
 import android.app.NotificationManager
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -21,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
@@ -192,31 +194,39 @@ class SettingsActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- UPDATE PASSWORD IN DATABASE --- //
+    // --- UPDATE PASSWORD VIA FIREBASE AUTH --- //
     private fun updatePassword(currentPassword: String, newPassword: String) {
-        val loggedInEmail = prefs.getString("logged_in_email", "") ?: ""
+        val user = FirebaseAuth.getInstance().currentUser
+        val email = user?.email
 
-        lifecycleScope.launch {
-            val user = db.userDao().getUserByEmailAndPassword(loggedInEmail, currentPassword)
-            if (user != null) {
-                db.userDao().updatePassword(user.userId, newPassword)
-                runOnUiThread {
-                    Toast.makeText(
-                        this@SettingsActivity,
-                        "Password updated successfully",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            } else {
-                runOnUiThread {
-                    Toast.makeText(
-                        this@SettingsActivity,
-                        "Current password is incorrect",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
+        if (user == null || email == null) {
+            Toast.makeText(this, "Not signed in", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val credential = com.google.firebase.auth.EmailAuthProvider
+            .getCredential(email, currentPassword)
+
+        user.reauthenticate(credential)
+            .addOnSuccessListener {
+                user.updatePassword(newPassword)
+                    .addOnSuccessListener {
+                        Toast.makeText(this,
+                            "Password updated successfully",
+                            Toast.LENGTH_SHORT).show()
+                        Log.d("Settings", "Password updated via Firebase Auth")
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this,
+                            "Failed to update: ${e.message}",
+                            Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this,
+                    "Current password is incorrect",
+                    Toast.LENGTH_SHORT).show()
+            }
     }
 
     // --- SEND NOTIFICATION --- //

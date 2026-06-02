@@ -297,16 +297,27 @@ class ReportsActivity : AppCompatActivity() {
                         resolver.openOutputStream(uri).use { out ->
                             pdf.writeTo(out)
                         }
+                        val firebaseRepo = com.smartspend.data.firebase.FirebaseRepository()
+                        val downloadUrl = firebaseRepo.uploadPdfReport(uri, fileName)
+                        if (downloadUrl != null) {
+                            Log.d("ReportsActivity", "PDF uploaded to Firebase: $downloadUrl")
+                        }
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@ReportsActivity, "Report saved to Downloads", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@ReportsActivity, "Report saved to Downloads and uploaded to cloud", Toast.LENGTH_LONG).show()
                         }
                     } else {
                         // fallback
                         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                         val file = File(downloads, fileName)
                         FileOutputStream(file).use { out -> pdf.writeTo(out) }
+                        val fileUri = android.net.Uri.fromFile(file)
+                        val firebaseRepo = com.smartspend.data.firebase.FirebaseRepository()
+                        val downloadUrl = firebaseRepo.uploadPdfReport(fileUri, fileName)
+                        if (downloadUrl != null) {
+                            Log.d("ReportsActivity", "PDF uploaded to Firebase: $downloadUrl")
+                        }
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@ReportsActivity, "Report saved to Downloads", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@ReportsActivity, "Report saved to Downloads and uploaded to cloud", Toast.LENGTH_LONG).show()
                         }
                     }
                 } else {
@@ -315,8 +326,11 @@ class ReportsActivity : AppCompatActivity() {
                     if (!downloads.exists()) downloads.mkdirs()
                     val file = File(downloads, fileName)
                     FileOutputStream(file).use { out -> pdf.writeTo(out) }
+                    val fileUri = android.net.Uri.fromFile(file)
+                    val firebaseRepo = com.smartspend.data.firebase.FirebaseRepository()
+                    firebaseRepo.uploadPdfReport(fileUri, fileName)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ReportsActivity, "Report saved to Downloads", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@ReportsActivity, "Report saved to Downloads and uploaded to cloud", Toast.LENGTH_LONG).show()
                     }
                 }
 

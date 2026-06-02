@@ -6,10 +6,10 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import android.net.Uri
-import android.widget.ImageView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import java.io.File
@@ -127,8 +126,8 @@ class ExpenseActivity : AppCompatActivity() {
 
     private fun applyExpenseSelected() {
         isExpense = true
-        btnExpense.background = getDrawable(R.drawable.bg_btn_expense)
-        btnIncome.background = getDrawable(R.drawable.bg_btn_income_inactive)
+        btnExpense.background = AppCompatResources.getDrawable(this, R.drawable.bg_btn_expense)
+        btnIncome.background = AppCompatResources.getDrawable(this, R.drawable.bg_btn_income_inactive)
         btnExpense.setTextColor(Color.WHITE)
         btnIncome.setTextColor(Color.WHITE)
         tvSummaryAmount.setTextColor(Color.parseColor("#E91E63"))
@@ -137,8 +136,8 @@ class ExpenseActivity : AppCompatActivity() {
 
     private fun applyIncomeSelected() {
         isExpense = false
-        btnExpense.background = getDrawable(R.drawable.bg_btn_expense_inactive)
-        btnIncome.background = getDrawable(R.drawable.bg_btn_income)
+        btnExpense.background = AppCompatResources.getDrawable(this, R.drawable.bg_btn_expense_inactive)
+        btnIncome.background = AppCompatResources.getDrawable(this, R.drawable.bg_btn_income)
         btnExpense.setTextColor(Color.WHITE)
         btnIncome.setTextColor(Color.WHITE)
         tvSummaryAmount.setTextColor(Color.parseColor("#00C896"))
