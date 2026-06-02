@@ -19,7 +19,7 @@ import com.smartspend.data.entity.User
 
 @Database(
     entities = [Expense::class, Category::class, Income::class, User::class, Goal::class, SpendingGoal::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class SmartSpendDatabase : RoomDatabase() {
