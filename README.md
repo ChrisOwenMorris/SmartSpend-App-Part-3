@@ -128,7 +128,7 @@ SmartSpend successfully demonstrates teamwork, Android development principles, U
 ---
 
 ## YouTube Link
-https://www.youtube.com/watch?v=a23lQ4fO7yw&feature=youtu.be 
+https://youtu.be/utkDSTLU_34
 
 ---
 
