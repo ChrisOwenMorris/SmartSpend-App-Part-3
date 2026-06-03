@@ -36,6 +36,10 @@ import androidx.core.graphics.toColorInt
 import com.smartspend.data.PieSlice
 
 
+/**
+ * Reports screen showing expense summaries, charts, and a PDF export option.
+ * Supports weekly, monthly, and yearly reporting periods selectable via toggle buttons.
+ */
 @SuppressLint("NewApi")
 @RequiresApi(Build.VERSION_CODES.O)
 class ReportsActivity : AppCompatActivity() {
@@ -385,6 +389,10 @@ class ReportsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Loads expense and income data for the given period and updates all report charts and summary cards.
+     * Supports "week", "month", and "year" period values.
+     */
     private fun loadReport(
         period: String,
         tvPeriodLabel: TextView,

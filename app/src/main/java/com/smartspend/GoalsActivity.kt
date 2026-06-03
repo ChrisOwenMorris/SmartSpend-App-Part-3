@@ -30,6 +30,10 @@ import com.smartspend.data.PieSlice
 import com.smartspend.PieChartView
 import android.view.View
 
+/**
+ * Screen for creating, viewing, and updating savings goals and monthly spending goals.
+ * The most recently created goal is displayed as the featured goal with a progress chart.
+ */
 class GoalsActivity : AppCompatActivity() {
 
     private val db by lazy {
@@ -221,6 +225,9 @@ class GoalsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Reads the create-goal form, validates all fields, then saves the goal to Room and Firestore.
+     */
     private fun createGoal() {
         val name = findViewById<TextInputEditText>(R.id.etGoalName).text.toString().trim()
         val amountStr = findViewById<TextInputEditText>(R.id.etGoalAmount).text.toString().trim()

@@ -11,8 +11,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Singleton helper that attaches the hamburger popup menu to any activity and provides navigation utilities.
+ */
 object NavigationHelper {
 
+    /**
+     * Attaches the popup navigation menu to the activity's btnMenu view.
+     * Handles navigation to all screens and logout with Room data clearing.
+     */
     fun setupMenu(activity: Activity) {
         val menuButton = activity.findViewById<View>(R.id.btnMenu)
 
@@ -57,6 +64,7 @@ object NavigationHelper {
         }
     }
 
+    /** Navigates to the target screen; skips the transition if the activity is already on that screen. */
     private fun openScreen(activity: Activity, screen: Class<*>) {
         if (activity::class.java == screen) return
 
@@ -65,6 +73,9 @@ object NavigationHelper {
         activity.startActivity(intent)
     }
 
+    /**
+     * Navigates to DashboardActivity, finishing the entire back stack if already on the Dashboard.
+     */
     fun goToDashboard(activity: Activity) {
         if (activity is DashboardActivity) {
             activity.finishAffinity()

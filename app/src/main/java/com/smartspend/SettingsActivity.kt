@@ -26,6 +26,10 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.R.id.etProfileName
 
+/**
+ * Settings screen for managing theme, currency, notifications, and account preferences.
+ * All preferences are persisted to SharedPreferences and applied immediately.
+ */
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
@@ -182,6 +186,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // ── Save Settings ────────────────────────────────────────────────────────
+        /** Persists all toggle states and the selected theme colour, then recreates the activity to apply changes. */
         btnSaveSettings.setOnClickListener {
             if (switchSpendingAlerts.isChecked ||
                 switchReminders.isChecked ||

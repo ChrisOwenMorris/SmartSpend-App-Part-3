@@ -1,0 +1,102 @@
+References
+1. Android Developers (2026) Save data in a
+local database using Room. Available at:
+https://developer.android.com/training/data-storage/room
+(Accessed: 18 May 2026).
+
+2. Firebase (2026) Authenticate with Firebase
+using Password-Based Accounts on Android. Available at:
+https://firebase.google.com/docs/auth/android/password-auth
+(Accessed: 18 May 2026).
+
+3. Firebase (2026) Get started with Cloud
+Firestore. Available at:
+https://firebase.google.com/docs/firestore/quickstart
+(Accessed: 18 May 2026).
+
+4. Firebase (2026) Upload files with Cloud
+Storage on Android. Available at:
+https://firebase.google.com/docs/storage/android/upload-files
+(Accessed: 18 May 2026).
+
+5. Android Developers (2026) Kotlin coroutines
+on Android. Available at:
+https://developer.android.com/kotlin/coroutines
+(Accessed: 18 May 2026).
+
+6. Android Developers (2026) Create a list with
+RecyclerView. Available at:
+https://developer.android.com/develop/ui/views/layout/recyclerview
+(Accessed: 18 May 2026).
+
+7. Android Developers (2026) Show a biometric
+authentication dialog. Available at:
+https://developer.android.com/training/sign-in/biometric-auth
+(Accessed: 18 May 2026).
+
+8. Android Developers (2026) Request runtime
+permissions. Available at:
+https://developer.android.com/training/permissions/requesting
+(Accessed: 18 May 2026).
+
+9. Android Developers (2026) Take photos.
+Available at:
+https://developer.android.com/training/camera-deprecated/photobasics
+(Accessed: 18 May 2026).
+
+10. Android Developers (2026) Generate a PDF
+document. Available at:
+https://developer.android.com/reference/android/graphics/pdf/PdfDocument
+(Accessed: 18 May 2026).
+
+11. Android Developers (2026) Support dark
+theme on Android. Available at:
+https://developer.android.com/develop/ui/views/theming/darktheme
+(Accessed: 18 May 2026).
+
+12. Material Design (2026) Material Components
+for Android. Available at:
+https://m3.material.io/develop/android
+(Accessed: 18 May 2026).
+
+13. Android Developers (2026) Save key-value
+data with SharedPreferences. Available at:
+https://developer.android.com/training/data-storage/shared-preferences
+(Accessed: 18 May 2026).
+
+14. Android Developers (2026) Get a result from
+an activity. Available at:
+https://developer.android.com/training/basics/intents/result
+(Accessed: 18 May 2026).
+
+15. Kotlin (2026) Kotlin language documentation.
+Available at:
+https://kotlinlang.org/docs/home.html
+(Accessed: 18 May 2026).
+
+16. GitHub (2026) About GitHub Actions.
+Available at:
+https://docs.github.com/en/actions/about-github-actions/understanding-github-actions
+(Accessed: 18 May 2026).
+
+17. GitHub Marketplace (2026) Automated build
+Android app with GitHub Action. Available at:
+https://github.com/marketplace/actions/automated-build-android-app-with-github-action
+(Accessed: 18 May 2026).
+
+18. GitHub (2026) Github-actions build.yml
+example. Available at:
+https://github.com/IMAD5112/Github-actions/blob/main/.github/workflows/build.yml
+(Accessed: 18 May 2026).
+
+19. Android Developers (2026) Use
+lifecycleScope and viewModelScope. Available
+at:
+https://developer.android.com/topic/libraries/architecture/coroutines
+(Accessed: 18 May 2026).
+
+20. Coil (2026) Coil image loading library
+for Android backed by Kotlin Coroutines.
+Available at:
+https://coil-kt.github.io/coil/
+(Accessed: 18 May 2026).

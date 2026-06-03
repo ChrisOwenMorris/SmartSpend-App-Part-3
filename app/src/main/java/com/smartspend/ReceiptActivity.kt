@@ -33,6 +33,10 @@ import kotlinx.coroutines.flow.first
 import com.smartspend.data.entity.Income
 import com.smartspend.data.entity.ExpenseWithCategory
 
+/**
+ * Receipt management screen for capturing, browsing, and linking transaction images.
+ * Supports filtering by category, date, and text search.
+ */
 class ReceiptActivity : AppCompatActivity() {
 
     private val db by lazy {
@@ -194,22 +198,21 @@ class ReceiptActivity : AppCompatActivity() {
     private fun setupCategoryFilterSpinner() {
         lifecycleScope.launch(Dispatchers.IO) {
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-            db.categoryDao().getAllCategories(userId).collect { categories ->
-                loadedCategories = categories
-                withContext(Dispatchers.Main) {
-                    val names = mutableListOf("All Categories") + categories.map { it.categoryName }
-                    val adapter = ArrayAdapter(this@ReceiptActivity, android.R.layout.simple_spinner_item, names)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    spFilterCategory.adapter = adapter
-                    spFilterCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
-                            selectedCategoryFilterId = if (pos == 0) -1 else loadedCategories[pos - 1].categoryId
-                            applyFilters()
-                        }
-                        override fun onNothingSelected(parent: AdapterView<*>?) {}
+            val categories = db.categoryDao().getAllCategories(userId)
+            loadedCategories = categories
+            withContext(Dispatchers.Main) {
+                val names = mutableListOf("All Categories") + categories.map { it.categoryName }
+                val adapter = ArrayAdapter(this@ReceiptActivity, android.R.layout.simple_spinner_item, names)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spFilterCategory.adapter = adapter
+                spFilterCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+                        selectedCategoryFilterId = if (pos == 0) -1 else loadedCategories[pos - 1].categoryId
+                        applyFilters()
                     }
-                    applyFilters()
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
                 }
+                applyFilters()
             }
         }
     }
@@ -241,11 +244,13 @@ class ReceiptActivity : AppCompatActivity() {
         return file.absolutePath
     }
 
+    /** Launches the camera intent to capture a new receipt photo. */
     private fun openCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         cameraLauncher.launch(intent)
     }
 
+    /** Opens the device gallery to pick an existing image and link it to a transaction. */
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         galleryLauncher.launch(intent)

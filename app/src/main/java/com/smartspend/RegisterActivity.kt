@@ -15,6 +15,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.data.SessionManager
 import kotlinx.coroutines.launch
 
+/**
+ * Registration screen for SmartSpend.
+ * Collects user details and creates a new Firebase account via FirebaseRepository.
+ */
 class RegisterActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +60,7 @@ class RegisterActivity : AppCompatActivity() {
             etConfirmPassword.setSelection(etConfirmPassword.text.length)
         }
 
+        /** Validates all fields, registers the user via Firebase Auth, then redirects to Login on success. */
         btnRegister.setOnClickListener {
             val name = etName.text.toString().trim()
             val email = etEmail.text.toString().trim()

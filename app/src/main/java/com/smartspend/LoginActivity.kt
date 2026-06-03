@@ -19,6 +19,10 @@ import com.smartspend.data.SessionManager
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 
+/**
+ * Login screen for SmartSpend.
+ * Handles email/password login, biometric login, and first-time Firestore data sync on success.
+ */
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var etEmail: EditText
@@ -69,6 +73,7 @@ class LoginActivity : AppCompatActivity() {
             etPassword.setSelection(etPassword.text.length)
         }
 
+        /** Validates credentials, calls FirebaseRepository.loginUser, syncs Firestore data on first login, then navigates to Dashboard. */
         btnSignIn.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()

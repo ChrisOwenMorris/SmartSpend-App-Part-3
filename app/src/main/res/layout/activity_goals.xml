@@ -70,7 +70,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Set your minimum and maximum spend for this month"
-                        android:textColor="#555555"
+                        android:textColor="@color/ss_text_secondary"
                         android:textSize="13sp"
                         android:layout_marginBottom="16dp"/>
 
@@ -129,7 +129,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="160dp"
                         android:layout_marginBottom="16dp"
-                        android:background="#F0F0F0">
+                        android:background="@color/ss_card">
 
                         <ImageView
                             android:id="@+id/ivFeaturedGoalImage"
@@ -155,7 +155,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/tap_to_upload_image"
-                                android:textColor="#555555"
+                                android:textColor="@color/ss_text_secondary"
                                 android:textSize="12sp"
                                 android:layout_marginTop="4dp"/>
                         </LinearLayout>
@@ -166,7 +166,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/dream_vacation_to_bali"
-                        android:textColor="#111111"
+                        android:textColor="@color/ss_text_primary"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="4dp"/>
@@ -176,7 +176,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/target_dec_2026"
-                        android:textColor="#555555"
+                        android:textColor="@color/ss_text_secondary"
                         android:textSize="13sp"
                         android:layout_marginBottom="20dp"/>
 
@@ -213,7 +213,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/current_savings"
-                                android:textColor="#555555"
+                                android:textColor="@color/ss_text_secondary"
                                 android:textSize="12sp"
                                 android:layout_marginBottom="2dp"/>
 
@@ -222,7 +222,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="R 0"
-                                android:textColor="#111111"
+                                android:textColor="@color/ss_text_primary"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
                                 android:layout_marginBottom="6dp"/>
@@ -242,7 +242,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/goal_amount"
-                                android:textColor="#555555"
+                                android:textColor="@color/ss_text_secondary"
                                 android:textSize="12sp"
                                 android:layout_marginBottom="2dp"/>
 
@@ -251,7 +251,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="R 0"
-                                android:textColor="#111111"
+                                android:textColor="@color/ss_text_primary"
                                 android:textSize="18sp"
                                 android:textStyle="bold"/>
                         </LinearLayout>
@@ -370,7 +370,7 @@
                         android:layout_height="100dp"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:background="#F0F0F0"
+                        android:background="@color/ss_card"
                         android:layout_marginBottom="16dp">
 
                         <ImageView
@@ -385,7 +385,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/upload_goal_image"
-                            android:textColor="#555555"
+                            android:textColor="@color/ss_text_secondary"
                             android:layout_marginTop="8dp"/>
                     </LinearLayout>
 

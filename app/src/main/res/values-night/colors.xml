@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ss_background">#121212</color>
+    <color name="ss_card">#1E1E1E</color>
+    <color name="ss_text_primary">#FFFFFF</color>
+    <color name="ss_text_secondary">#B0BEC5</color>
+    <color name="ss_divider">#2C2C2C</color>
+    <color name="ss_text_hint">#757575</color>
+    <color name="ss_surface">#1E1E1E</color>
+    <color name="ss_surface_variant">#2C2C2C</color>
+</resources>

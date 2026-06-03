@@ -30,6 +30,10 @@ import kotlinx.coroutines.flow.first
 import androidx.core.content.edit
 import com.smartspend.data.entity.Income
 
+/**
+ * Main dashboard screen showing budget summary, spending totals, and recent transactions.
+ * Refreshes data every time the activity resumes or receives a new intent.
+ */
 class DashboardActivity : AppCompatActivity() {
 
     private val db by lazy {
@@ -108,6 +112,9 @@ class DashboardActivity : AppCompatActivity() {
         loadDashboardData()
     }
 
+    /**
+     * Shows a month-picker dialog, then prompts for a budget amount and persists it to SharedPreferences and Firestore.
+     */
     private fun showSetBudgetDialog() {
         val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
 
@@ -211,6 +218,10 @@ class DashboardActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Fetches expense and income data for the current month and updates all dashboard UI components.
+     * Cancels any previous in-flight load before starting a new one.
+     */
     private fun loadDashboardData() {
         dashboardLoadJob?.cancel()
 

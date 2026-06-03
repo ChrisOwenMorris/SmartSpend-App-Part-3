@@ -247,7 +247,7 @@
                     android:text="@string/top_merchants"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="#111111"
+                    android:textColor="@color/ss_text_primary"
                     android:layout_marginBottom="14dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView

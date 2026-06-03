@@ -27,6 +27,10 @@ class FirebaseRepository {
 
     // ─── AUTH ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Registers a new user with Firebase Auth and saves their profile to Firestore.
+     * Returns true on success, false on failure.
+     */
     suspend fun registerUser(email: String, password: String, name: String): Boolean {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
@@ -47,6 +51,10 @@ class FirebaseRepository {
         }
     }
 
+    /**
+     * Logs in an existing user via Firebase Auth.
+     * Returns true on success, false on failure.
+     */
     suspend fun loginUser(email: String, password: String): Boolean {
         return try {
             auth.signInWithEmailAndPassword(email, password).await()
@@ -58,6 +66,7 @@ class FirebaseRepository {
         }
     }
 
+    /** Signs the current user out of Firebase Auth. */
     fun logoutUser() {
         auth.signOut()
         Log.d("FirebaseRepo", "User signed out")
@@ -83,6 +92,10 @@ class FirebaseRepository {
 
     // ─── EXPENSES ─────────────────────────────────────────────────────────────
 
+    /**
+     * Saves an expense entry to the current user's Firestore subcollection.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveExpense(expense: Expense, categoryName: String = ""): Boolean {
         val uid = currentUserId ?: return false
         return try {
@@ -118,6 +131,10 @@ class FirebaseRepository {
         }
     }
 
+    /**
+     * Retrieves all expenses for the current user from Firestore.
+     * Returns an empty list if the user is not signed in or on failure.
+     */
     suspend fun getExpenses(): List<Map<String, Any>> {
         val uid = currentUserId ?: return emptyList()
         return try {
@@ -136,6 +153,10 @@ class FirebaseRepository {
 
     // ─── CATEGORIES ────────────────────────────────────────────────────────────
 
+    /**
+     * Saves a category to the current user's Firestore subcollection.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveCategory(category: Category): Boolean {
         val uid = currentUserId ?: return false
         return try {
@@ -160,6 +181,10 @@ class FirebaseRepository {
         }
     }
 
+    /**
+     * Retrieves all categories for the current user from Firestore.
+     * Returns an empty list if the user is not signed in or on failure.
+     */
     suspend fun getCategories(): List<Map<String, Any>> {
         val uid = currentUserId ?: return emptyList()
         return try {
@@ -177,6 +202,10 @@ class FirebaseRepository {
 
     // ─── GOALS ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Saves a savings goal to the current user's Firestore subcollection.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveGoal(goal: Goal): Boolean {
         val uid = currentUserId ?: return false
         return try {
@@ -209,6 +238,10 @@ class FirebaseRepository {
 
     // ─── SPENDING GOALS ────────────────────────────────────────────────────────
 
+    /**
+     * Saves a monthly spending goal (min/max spend) to the current user's Firestore subcollection.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveSpendingGoal(goal: SpendingGoal): Boolean {
         val uid = currentUserId ?: return false
         return try {
@@ -237,6 +270,10 @@ class FirebaseRepository {
 
     // ─── BUDGETS (Preserved from Yours) ────────────────────────────────────────
 
+    /**
+     * Saves the monthly budget amount for the given month index to Firestore.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveBudget(month: Int, amount: Double): Boolean {
         val uid = currentUserId ?: return false
         return try {
@@ -264,6 +301,10 @@ class FirebaseRepository {
 
     // ─── INCOME ────────────────────────────────────────────────────────────────
 
+    /**
+     * Saves an income entry to the current user's Firestore subcollection.
+     * Returns true on success, false on failure.
+     */
     suspend fun saveIncome(income: Income): Boolean {
         val uid = currentUserId ?: return false
         return try {

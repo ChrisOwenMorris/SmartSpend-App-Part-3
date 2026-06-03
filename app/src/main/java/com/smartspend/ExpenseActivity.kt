@@ -30,6 +30,10 @@ import androidx.core.content.ContextCompat
 import java.io.File
 import androidx.appcompat.app.AlertDialog
 
+/**
+ * Screen for logging new expense or income entries.
+ * Supports category selection, optional image attachment, and start/end time input.
+ */
 class ExpenseActivity : AppCompatActivity() {
 
     private val db by lazy {
@@ -396,6 +400,10 @@ class ExpenseActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Loads categories from Room for the current user, seeding defaults if none exist, then populates the spinner.
+     * Disables the save button until loading is complete.
+     */
     private fun setupCategorySpinner() {
         btnSave.isEnabled = false
         Log.d("ExpenseActivity", "Save button disabled — waiting for categories to load")
@@ -446,6 +454,10 @@ class ExpenseActivity : AppCompatActivity() {
         tvSummaryAmount.text = if (isExpense) "-R %.2f".format(amount) else "+R %.2f".format(amount)
     }
 
+    /**
+     * Validates form input and saves the entry as an Expense or Income to Room then Firestore.
+     * Navigates back to Dashboard on success.
+     */
     private fun saveExpense() {
         if (loadedCategories.isEmpty()) {
             Toast.makeText(this, "Categories not loaded yet, please wait", Toast.LENGTH_SHORT).show()

@@ -31,6 +31,10 @@ import com.smartspend.data.entity.User
     version = 6,
     exportSchema = false
 )
+/**
+ * Room database for SmartSpend — holds all local entities.
+ * Use getDatabase() to obtain the thread-safe singleton instance.
+ */
 abstract class SmartSpendDatabase : RoomDatabase() {
 
     abstract fun expenseDao(): ExpenseDao
@@ -45,6 +49,9 @@ abstract class SmartSpendDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: SmartSpendDatabase? = null
 
+        /**
+         * Returns the singleton SmartSpendDatabase, creating it if it does not yet exist.
+         */
         fun getDatabase(context: Context): SmartSpendDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(

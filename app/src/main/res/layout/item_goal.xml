@@ -39,7 +39,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:textColor="#111111"
+                android:textColor="@color/ss_text_primary"
                 android:layout_marginBottom="2dp"/>
 
             <TextView
@@ -71,7 +71,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textSize="12sp"
-                    android:textColor="#111111"
+                    android:textColor="@color/ss_text_primary"
                     android:textStyle="bold"/>
 
                 <TextView
