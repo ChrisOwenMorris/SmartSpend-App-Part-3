@@ -1,19 +1,20 @@
-# SmartSpend – Personal Budgeting Android Application
+# SmartSpend – Personal Budgeting Android Application (POE Part 3)
 
 ## Group Project Overview
 
 SmartSpend is a mobile budgeting application developed in Android Studio to help users manage their personal finances effectively. The app allows users to track income, expenses, savings goals, and spending habits through a modern and user-friendly interface.
 
-This project was completed in two development phases:
+This project was completed in three development phases:
 
 - **Phase 1:** User Interface Design (Layouts / Front-End)
 - **Phase 2:** Functionality Implementation (Back-End / Logic / Database)
+- **Phase 3:** Advanced Feature Integration (Custom Functionality)
 
 The application was developed collaboratively using GitHub branches and version control.
 
 ---
 
-# Project Objective
+## Project Objective
 
 The goal of SmartSpend is to provide users with an easy-to-use finance management tool that enables them to:
 
@@ -25,7 +26,16 @@ The goal of SmartSpend is to provide users with an easy-to-use finance managemen
 
 ---
 
-# Technologies Used
+## 🚀 Key Custom Features (Part 3)
+
+To provide a more comprehensive financial management experience, we implemented the following custom features:
+
+- **Enhanced Receipt Management:** We integrated a robust receipt management system that allows users to attach digital receipts to their financial records. Users can link receipts directly to existing transactions or upload new ones at the moment of entry. This uses `ActivityResultContracts` and `ImageView` components to verify expenses securely.
+- **Custom Downloadable Reporting:** We expanded the reporting functionality to provide users with tangible insights into their spending habits. Users can generate and download comprehensive monthly or yearly reports. These reports aggregate spending data into clear, easy-to-read formats, helping users monitor their progress toward financial goals and identify areas for budget adjustments.
+
+---
+
+## Technologies Used
 
 - **Android Studio**
 - **Kotlin**
@@ -37,180 +47,72 @@ The goal of SmartSpend is to provide users with an easy-to-use finance managemen
 
 ---
 
-# Development Phases
+## Development Phases
 
-## Phase 1 – Layout Design
-
+### Phase 1 – Layout Design
 During Phase 1, all screens were designed and structured using XML layouts. Focus was placed on user experience, navigation, consistency, and visual appeal.
 
-Layouts included:
+### Phase 2 – Functionality Implementation
+During Phase 2, all app logic and back-end features were integrated using Kotlin and Room Database, including user registration, goal creation, and transaction tracking.
 
-- Login Screen
-- Register Screen
-- Dashboard
-- Goals Screen
-- Transactions Screen
-- Reports Screen
-- Settings Screen
+### Phase 3 – Advanced Feature Integration
+During Phase 3, we focused on enhancing usability through the Receipt Management system and the Downloadable Report feature.
 
 ---
 
-## Phase 2 – Functionality Implementation
+## Team Contributions
 
-During Phase 2, all app logic and back-end features were integrated using Kotlin and Room Database.
+**Note:** All team members refined their individual screens throughout the project, incorporating Part 2 feedback before beginning Part 3.
 
-Features implemented:
+### Group Leader – Christopher Morris
+* Final UI enhancements
+* App testing
+* GitHub repository creation
+* YouTube video production
+* Team coordination
 
-- User registration and login
-- Savings goal creation
-- Transaction tracking
-- Reports generation
-- Local offline database storage
-- RecyclerView dynamic lists
-- Navigation between screens
+### Member 1 – Janaid Shaik
+* Firebase database integration
+* Unit testing
+* Code commenting
+* Academic referencing
+* GitHub repository management
 
----
+### Member 2 – Thato Guemede
+* Settings page development
+* Settings functionality updates
+* Maintenance of analytics logic
+* Reports screen refinement
 
-# Team Contributions
+### Member 3 – Andisa Azobe
+* Full Reports page development
+* Working graph integration
+* Dynamic chart implementation
+* Transaction tracking maintenance
 
-## Group Leader (Member 5) – Christopher Morris
-
-### Responsibilities:
-
-- Managed project structure and GitHub repository
-- Merged team branches into the dev branch
-- Resolved merge conflicts and build errors
-- Implemented Room Database setup
-- Final project integration and testing
-- Coordinated task delegation
-- Oversaw Phase 1 and Phase 2 completion
-
----
-
-## Member 1 – UI / Authentication Developer - Janaid Shaik
-
-### Responsibilities:
-
-- Designed Login Screen layout
-- Designed Register Screen layout
-- Implemented login functionality
-- Implemented registration validation
-- Input field styling and navigation
+### Member 4 – Reesaido Alagiry
+* Downloadable report feature
+* PDF/Data export logic
+* Goals screen maintenance
+* Savings progress tracking
 
 ---
 
-## Member 4 – Goals - Reesaido Alagiry
+## Database Architecture: Hybrid Storage
 
-### Responsibilities:
+To ensure SmartSpend provides a seamless user experience regardless of connectivity, we implemented a **dual-layer database architecture**:
 
-- Designed Goals Screen layout
-- Implemented add savings goals feature
-- Goal progress display
-- RecyclerView integration for goals list
+* **Room Database (Local/Offline):** Acts as the primary source of truth for immediate data access, ensuring the app remains fully functional, fast, and responsive without an active internet connection.
+* **Firebase (Online/Sync):** Provides cloud-based synchronization and real-time data backup, allowing users to keep their financial data consistent across multiple devices.
 
 ---
 
-## Member 2 – Reports & Analytics Developer - Thato Guemede
-
-### Responsibilities:
-
-- Designed Reports Screen layout
-- Implemented monthly/yearly reporting views
-- Income vs expense summaries
-- Spending category analysis
+## GitHub Workflow Used
+The team used GitHub branches (Main, Integration, and Individual Feature Branches) to ensure efficient collaboration, manual conflict resolution, and consistent testing.
 
 ---
 
-## Member 3 – Transactions Developer - Andisa Azobe
-
-### Responsibilities:
-
-- Designed Transactions Screen layout
-- Implemented income and expense entry forms
-- Transaction history list
-- Category filtering functionality
-
----
-
-# Database Implementation
-
-SmartSpend uses **Room Database** for offline local storage.
-
-### Database Tables:
-
-- Users
-- Transactions
-- Goals
-
-### Benefits:
-
-- Works offline
-- Fast local data access
-- Structured persistent storage
-- Scalable for future updates
-
----
-
-# Key Features
-
-- Secure login/register system
-- Add and manage expenses
-- Income tracking
-- Savings goal planner
-- Financial reports dashboard
-- Offline support
-- Modern UI design
-
----
-
-# GitHub Workflow Used
-
-The team used GitHub branches for collaboration:
-
-- Main Branch
-- Integration Branch
-- Individual Feature Branches
-
-Workflow:
-
-1. Each member worked on their own branch
-2. Changes committed and pushed
-3. Group leader merged branches
-4. Errors resolved
-5. Final project tested and submitted
-
----
-
-# Challenges Faced
-
-- Merge conflicts between branches
-- Missing resources after integration
-- Gradle dependency issues
-- Layout ID mismatches
-- Emulator/device setup issues
-
-### Solutions:
-
-- Manual conflict resolution
-- Resource restructuring
-- Gradle synchronization
-- Testing each screen individually
-- Final integration debugging
-
----
-
-# Future Improvements
-
-- Cloud sync using Firebase
-- Biometric login
-- Export reports to PDF
-- Notifications and reminders
-- Dark mode support
-- Multi-currency budgeting
-
----
-
-# How to Run the Project
+## How to Run the Project
 
 1. Clone repository
 2. Open in Android Studio
@@ -220,21 +122,17 @@ Workflow:
 
 ---
 
-# Conclusion
-
-SmartSpend successfully demonstrates teamwork, Android development principles, UI/UX design, local database management, and collaborative software engineering using GitHub.
-
-The project met all Phase 1 and Phase 2 requirements by delivering both design and full functionality.
+## Conclusion
+SmartSpend successfully demonstrates teamwork, Android development principles, UI/UX design, local database management, and collaborative software engineering. The project met all Phase 1, 2, and 3 requirements.
 
 ---
 
-#Youtube Link : 
+## YouTube Link
 https://www.youtube.com/watch?v=a23lQ4fO7yw&feature=youtu.be 
 
 ---
 
-# Authors
-
-Developed by Group Members  
-Emeris Varsity College
+## Authors
+Developed by Group Members
+IIE Varsity College
 SmartSpend Project Team
