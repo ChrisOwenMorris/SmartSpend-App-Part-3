@@ -29,12 +29,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.io.OutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import com.smartspend.data.dao.CategoryWithTotal
 import java.lang.Exception
 import androidx.core.graphics.toColorInt
+import com.smartspend.data.PieSlice
 
 
 @SuppressLint("NewApi")
@@ -161,8 +160,9 @@ class ReportsActivity : AppCompatActivity() {
     /**
      * Export the currently selected period report to PDF.
      * This function fetches the same data used by loadReport(...) for the selected period,
-     * captures the chart views as bitmaps, and writes a multi-page PDF to Downloads.
+     * captures the chart views as bitmaps, and writes a multipage PDF to Downloads.
      */
+    @SuppressLint("DefaultLocale")
     private suspend fun exportCurrentPeriodReportToPdf() {
         withContext(Dispatchers.IO) {
             try {
@@ -184,9 +184,10 @@ class ReportsActivity : AppCompatActivity() {
                 }
 
                 // Fetch entries and totals (reuse same DAO methods you already use)
-                val expenses = db.expenseDao().getExpensesByDateRange(userId, startDate, endDate) ?: emptyList()
-                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate) ?: 0.0
-                val totalIncome = db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate) ?: 0.0
+                val expenses = db.expenseDao().getExpensesByDateRange(userId, startDate, endDate)
+                val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
+                val totalIncome =
+                    db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
 
                 // Capture chart views on UI thread
                 val chartsBitmaps = withContext(Dispatchers.Main) {
@@ -451,6 +452,8 @@ class ReportsActivity : AppCompatActivity() {
 
                 // ── 3. PIE CHART — SPENDING BY CATEGORY ──────────────────────
                 val pieData = db.expenseDao().getExpensesGroupedByCategory(userId, startDate, endDate) ?: emptyList()
+                val totalSpent = pieData.sumOf { it.total }
+
                 val colorPalette = listOf(
                     "#6A11CB".toColorInt(),
                     "#2575FC".toColorInt(),
@@ -458,14 +461,22 @@ class ReportsActivity : AppCompatActivity() {
                     "#FFA17F".toColorInt(),
                     "#00C9FF".toColorInt()
                 )
+
                 val slices = pieData.mapIndexed { index, summary ->
+                    // 1. Calculate the percentage here in the Activity
+                    val rawPercentage = if (totalSpent > 0) (summary.total / totalSpent) * 100 else 0.0
+                    val roundedPercentage = String.format(java.util.Locale.US, "%.1f", rawPercentage).toDouble()
+
+                    // 2. Pass it into the constructor (This matches the new PieSlice data class)
                     PieSlice(
-                        name  = summary.categoryName,
+                        name = summary.categoryName,
                         value = summary.total,
+                        percentage = roundedPercentage, // 🌟 New parameter added here
                         color = colorPalette[index % colorPalette.size]
                     )
                 }
-                Log.d("ReportsActivity", "Pie chart — ${slices.size} slices for $period")
+
+                Log.d("ReportsActivity", "Pie chart — ${slices.size} slices prepared with pre-calculated percentages.")
                 findViewById<PieChartView>(R.id.pieChart)?.setData(slices)
 
                 // ── 4. Y-AXIS CHART — SPENDING BY CATEGORY (BAR WITH Y AXIS) ──

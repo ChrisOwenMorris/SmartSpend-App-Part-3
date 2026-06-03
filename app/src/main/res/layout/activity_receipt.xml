@@ -31,9 +31,10 @@
             android:layout_marginStart="16dp" />
     </LinearLayout>
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -41,7 +42,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Camera capture card -->
             <LinearLayout
                 android:id="@+id/topCardContainer"
                 android:layout_width="match_parent"
@@ -78,7 +78,6 @@
                 android:background="@drawable/card_gradient_background"
                 app:backgroundTint="@null"/>
 
-            <!-- Most recent receipt preview (shown after capture/upload) -->
             <ImageView
                 android:id="@+id/ivReceiptPreview"
                 android:layout_width="match_parent"
@@ -88,7 +87,6 @@
                 android:contentDescription="@string/recent_receipt"
                 android:layout_marginTop="16dp"/>
 
-            <!-- Filter: Category -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -104,7 +102,6 @@
                 android:background="@drawable/card_background"
                 android:layout_marginBottom="12dp"/>
 
-            <!-- Filter: Date -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -125,7 +122,6 @@
                 android:padding="12dp"
                 android:layout_marginBottom="4dp"/>
 
-            <!-- Clear date filter -->
             <Button
                 android:id="@+id/btnClearDate"
                 android:layout_width="wrap_content"
@@ -136,7 +132,6 @@
                 android:layout_marginBottom="12dp"
                 style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
 
-            <!-- Filter: Description search -->
             <EditText
                 android:id="@+id/etSearchReceipts"
                 android:layout_width="match_parent"
@@ -149,13 +144,22 @@
                 android:layout_marginBottom="20dp"
                 android:textSize="14sp"/>
 
-            <!-- All receipts list -->
-            <LinearLayout
-                android:id="@+id/recentReceiptsContainer"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvReceiptsList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"/>
-        </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+                android:nestedScrollingEnabled="false"
+                android:scrollbars="none"/>
 
+            <TextView
+                android:id="@+id/tvEmptyStateIndicator"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No records found matching filters"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:paddingTop="32dp"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

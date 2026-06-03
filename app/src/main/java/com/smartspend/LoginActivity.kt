@@ -93,7 +93,10 @@ class LoginActivity : AppCompatActivity() {
 
                     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                     if (uid.isNotEmpty()) {
-                        val db = (application as SmartSpendApp).database
+                        val isFirstSyncDone = sharedPrefs.getBoolean("data_synced_for_$uid", false)
+
+                        if (!isFirstSyncDone) {
+                            val db = (application as SmartSpendApp).database
 
                         // ─── SYNC PASS 1: EXPENSES ───────────────────────────────────
                         val expenses = firebaseRepo.getExpenses()
@@ -169,6 +172,12 @@ class LoginActivity : AppCompatActivity() {
                             Log.d("LoginActivity", "Income history restored from Firestore to Room")
                         } catch (e: Exception) {
                             Log.e("LoginActivity", "Failed to complete income table restoration loop: ${e.message}")
+                        }
+                            sharedPrefs.edit { putBoolean("data_synced_for_$uid", true) }
+                            Log.d("LoginActivity", "Initial sync complete for user: $uid")
+                        } else {
+                            // 3. LOG THAT WE ARE SKIPPING
+                            Log.d("LoginActivity", "Data already synced, skipping Firestore restore.")
                         }
                     }
 

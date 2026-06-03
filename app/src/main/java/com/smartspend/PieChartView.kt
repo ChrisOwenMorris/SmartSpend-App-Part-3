@@ -1,36 +1,30 @@
 package com.smartspend
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
-import androidx.core.graphics.toColorInt
-
-data class PieSlice(val name: String, val value: Double, val color: Int)
+import com.smartspend.data.PieSlice
+import kotlin.math.cos
+import kotlin.math.sin
 
 class PieChartView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
     private var slices: List<PieSlice> = emptyList()
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-    private val innerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.FILL
-    }
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    // Label paint for drawing slice labels (Category + %)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textSize = 24f
+        color = Color.BLACK
+        textSize = 28f
         textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD
-    }
-    private val legendPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 26f
-        color = Color.DKGRAY
     }
 
     private val oval = RectF()
@@ -40,65 +34,83 @@ class PieChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    @SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Fix: Explicitly convert to Float to prevent type mismatch redlining
         val widthF = width.toFloat()
         val heightF = height.toFloat()
+        val isGoalChart = slices.any { it.name == "Saved" || it.name == "Remaining" }
 
-        val size = minOf(widthF, heightF * 0.7f)
+        val size = minOf(widthF, heightF) * 0.7f // Slightly smaller to make room for labels
+        if (size <= 0f) return
+
         val cx = widthF / 2f
-        val cy = (size / 2f) + 20f // Offset center to leave room for legends at the bottom
-        val radius = (size / 2f) * 0.85f
+        val cy = heightF / 2f
+        val radius = size / 2f
 
         val totalValue = slices.sumOf { it.value }.toFloat()
         oval.set(cx - radius, cy - radius, cx + radius, cy + radius)
 
-        if (totalValue == 0f) {
-            paint.color = "#F0F0F0".toColorInt()
-            canvas.drawCircle(cx, cy, radius, paint)
-            return
-        }
-
         var startAngle = -90f
+
         for (slice in slices) {
-            val sweepAngle = (slice.value.toFloat() / totalValue) * 360f
-            paint.color = slice.color
+            val sweepAngle = if (totalValue > 0) (slice.value.toFloat() / totalValue) * 360f else 0f
+            if (sweepAngle <= 0f) continue
+
+            paint.reset()
+            paint.isAntiAlias = true
+            paint.style = Paint.Style.FILL
+
+            // Apply Gradient for Goal Chart, solid color otherwise
+            if (slice.name == "Saved" && isGoalChart) {
+                val shader = SweepGradient(cx, cy, intArrayOf(
+                    Color.parseColor("#0066cc"),
+                    Color.parseColor("#10b981"),
+                    Color.parseColor("#0066cc")
+                ), null)
+                val matrix = Matrix()
+                matrix.postRotate(-90f, cx, cy)
+                shader.setLocalMatrix(matrix)
+                paint.shader = shader
+            } else {
+                paint.color = slice.color
+            }
+
             canvas.drawArc(oval, startAngle, sweepAngle, true, paint)
 
-            val midAngle = startAngle + sweepAngle / 2
-            val labelRadius = radius * 0.65f
-            val labelX = cx + labelRadius * Math.cos(Math.toRadians(midAngle.toDouble())).toFloat()
-            val labelY = cy + labelRadius * Math.sin(Math.toRadians(midAngle.toDouble())).toFloat()
+            // Draw Labels for non-goal charts
+            if (!isGoalChart && sweepAngle > 20f) {
+                val angleRad = Math.toRadians((startAngle + sweepAngle / 2).toDouble())
+                val labelRadius = radius * 1.25f // Position outside the slice
+                val labelX = cx + (labelRadius * cos(angleRad)).toFloat()
+                val labelY = cy + (labelRadius * sin(angleRad)).toFloat()
 
-            val percentage = ((slice.value.toFloat() / totalValue) * 100).toInt()
-            if (percentage > 5) { // Only draw percentages for readable slices
-                canvas.drawText("$percentage%", labelX, labelY + 8f, labelPaint)
+                val labelText = "${slice.name}\n${slice.percentage.toInt()}%"
+                // Draw multiple lines if needed (simple implementation)
+                canvas.drawText(slice.name, labelX, labelY, labelPaint)
+                canvas.drawText("${slice.percentage.toInt()}%", labelX, labelY + 30f, labelPaint)
             }
+
             startAngle += sweepAngle
         }
 
-        // Donut hole ring structure
-        canvas.drawCircle(cx, cy, radius * 0.5f, innerPaint)
+        // Draw Donut Hole only for Goal Chart
+        if (isGoalChart) {
+            paint.shader = null
+            paint.color = Color.WHITE
+            canvas.drawCircle(cx, cy, radius * 0.65f, paint)
 
-        drawLegend(canvas, cy + radius + 40f)
-    }
-
-    private fun drawLegend(canvas: Canvas, startY: Float) {
-        if (slices.isEmpty()) return
-        val itemWidth = width.toFloat() / 2f
-
-        slices.forEachIndexed { index, slice ->
-            val col = index % 2
-            val row = index / 2
-            val x = col * itemWidth + 40f
-            val y = startY + (row * 45f)
-
-            paint.color = slice.color
-            canvas.drawRect(x, y, x + 24f, y + 24f, paint)
-
-            canvas.drawText("${slice.name}: R${slice.value.toInt()}", x + 35f, y + 20f, legendPaint)
+            // Draw center percentage
+            val centerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 50f
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            val savedSlice = slices.find { it.name == "Saved" }
+            val text = "${savedSlice?.percentage?.toInt() ?: 0}%"
+            canvas.drawText(text, cx, cy - (centerTextPaint.descent() + centerTextPaint.ascent()) / 2, centerTextPaint)
         }
     }
 }

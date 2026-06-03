@@ -23,6 +23,12 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import androidx.core.net.toUri
 import androidx.core.graphics.toColorInt
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import java.io.File
+import com.smartspend.data.PieSlice
+import com.smartspend.PieChartView
+import android.view.View
 
 class GoalsActivity : AppCompatActivity() {
 
@@ -33,6 +39,14 @@ class GoalsActivity : AppCompatActivity() {
     private var selectedImageUri: Uri? = null
     private var featuredGoal: Goal? = null
     private lateinit var goalsAdapter: GoalsAdapter
+
+    // Layout View References
+    private lateinit var tvGoalName: TextView
+    private lateinit var tvGoalDate: TextView
+    private lateinit var tvCurrentAmount: TextView
+    private lateinit var tvTargetAmount: TextView
+    private lateinit var progressBarGoal: ProgressBar
+    private lateinit var ivGoalImage: ImageView
 
     // Image picker for creating a new goal
     private val imagePickerLauncher = registerForActivityResult(
@@ -55,12 +69,8 @@ class GoalsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val updatedGoal = goal.copy(imagePath = it.toString())
                     db.goalDao().update(updatedGoal)
-
-                    // Sync updated image path to Firebase
                     FirebaseRepository().saveGoal(updatedGoal)
                     Log.d("GoalsActivity", "Goal image path synced to Firebase: ${updatedGoal.goalId}")
-
-                    loadFeaturedGoal()
                 }
             }
         }
@@ -79,7 +89,14 @@ class GoalsActivity : AppCompatActivity() {
         setTheme(themeRes)
         setContentView(R.layout.activity_goals)
 
-        // Linking Navigation Helper to the menu button ID from your XML
+        // 🌟 FIX: Bind the layout references directly matching your XML definitions
+        tvGoalName = findViewById(R.id.tvFeaturedGoalTitle)
+        tvGoalDate = findViewById(R.id.tvFeaturedGoalDate)
+        tvCurrentAmount = findViewById(R.id.tvFeaturedCurrentAmount)
+        tvTargetAmount = findViewById(R.id.tvFeaturedGoalAmount)
+        progressBarGoal = findViewById(R.id.progressFeaturedGoal) // Matched to line 197 in XML
+        ivGoalImage = findViewById(R.id.ivFeaturedGoalImage)
+
         NavigationHelper.setupMenu(this)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -106,34 +123,28 @@ class GoalsActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        // Featured image tap (Frame holding the image)
         findViewById<FrameLayout>(R.id.frameFeaturedImage).setOnClickListener {
             featuredImagePickerLauncher.launch("image/*")
         }
 
-        // Image upload layout for new goal
         findViewById<LinearLayout>(R.id.layoutUploadImage).setOnClickListener {
             imagePickerLauncher.launch("image/*")
         }
 
-        // Target date picker (TextInputEditText)
         findViewById<TextInputEditText>(R.id.etTargetDate).setOnClickListener {
             showDatePicker { date ->
                 findViewById<TextInputEditText>(R.id.etTargetDate).setText(date)
             }
         }
 
-        // Create goal button
         findViewById<MaterialButton>(R.id.btnCreateGoal).setOnClickListener {
             createGoal()
         }
 
-        // Add savings button
         findViewById<MaterialButton>(R.id.btnAddSavings).setOnClickListener {
             showAddSavingsDialog()
         }
 
-        // Update goal button
         findViewById<MaterialButton>(R.id.btnUpdateGoal).setOnClickListener {
             showSelectGoalToUpdateDialog()
         }
@@ -142,69 +153,70 @@ class GoalsActivity : AppCompatActivity() {
     private fun loadFeaturedGoal() {
         lifecycleScope.launch {
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-            Log.d("GoalsActivity", "Loading featured goal for userId: $userId")
-            val goal = db.goalDao().getFeaturedGoal(userId)
-            featuredGoal = goal
 
-            if (goal != null) {
-                val percentage = if (goal.targetAmount > 0)
-                    ((goal.currentAmount / goal.targetAmount) * 100).toFloat()
-                else 0f
+            db.goalDao().getFeaturedGoal(userId).collect { goal ->
+                if (goal != null) {
+                    featuredGoal = goal
 
-                if (percentage >= 100f) {
-                    db.goalDao().markAsCompleted(goal.goalId)
-                    showCongratulationsCard()
-                    loadFeaturedGoal()
-                    return@launch
-                }
+                    // 1. DEFINE THESE VARIABLES FIRST so they are available below
+                    val target = goal.targetAmount
+                    val current = goal.currentAmount
+                    val progressPercent = if (target > 0) ((current / target) * 100).toInt() else 0
 
-                runOnUiThread {
-                    findViewById<TextView>(R.id.tvFeaturedGoalTitle).text = goal.goalName
-                    findViewById<TextView>(R.id.tvFeaturedGoalDate).text =
-                        getString(R.string.target_date_format, goal.targetDate)
-                    findViewById<TextView>(R.id.tvFeaturedCurrentAmount).text =
-                        getString(R.string.amount_format, goal.currentAmount)
-                    findViewById<TextView>(R.id.tvFeaturedGoalAmount).text =
-                        getString(R.string.amount_format, goal.targetAmount)
-                    findViewById<TextView>(R.id.tvFeaturedGoalPercentage).text =
-                        "${percentage.toInt()}%"
-                    findViewById<ProgressBar>(R.id.progressFeaturedGoal).progress =
-                        percentage.toInt()
+                    // Now these variables are resolved
+                    tvGoalName.text = goal.goalName
+                    tvGoalDate.text = "Target: ${goal.targetDate}"
+                    tvCurrentAmount.text = "R ${String.format("%.2f", current)}"
+                    tvTargetAmount.text = "R ${String.format("%.2f", target)}"
 
-                    val pieChart = findViewById<PieChartView>(R.id.pieChartFeatured)
-                    val slices = listOf(
-                        PieSlice("Progress", goal.currentAmount, Color.parseColor("#10B981")),
-                        PieSlice("Remaining", (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0), Color.parseColor("#E0E0E0"))
+                    // Update Progress Bar
+                    progressBarGoal.progress = progressPercent
+                    progressBarGoal.visibility = View.VISIBLE
+
+                    // Update Pie Chart
+                    val pieChartView = findViewById<PieChartView>(R.id.pieChartFeatured)
+
+                    val savedPercentage = if (target > 0) (current / target) * 100 else 0.0
+                    val remaining = if (target > current) target - current else 0.0
+
+                    val goalSlices = listOf(
+                        PieSlice("Saved", current, savedPercentage, Color.parseColor("#0066cc")),
+                        PieSlice(
+                            "Remaining",
+                            remaining,
+                            100.0 - savedPercentage,
+                            Color.parseColor("#EAEAEA")
+                        )
                     )
-                    pieChart.setData(slices)
 
-                    goal.imagePath?.let { path ->
-                        findViewById<ImageView>(R.id.ivFeaturedGoalImage)
-                            .setImageURI(path.toUri())
+                    pieChartView.setData(goalSlices)
+                    pieChartView.visibility = View.VISIBLE
+                    pieChartView.invalidate()
+
+                    if (!goal.imagePath.isNullOrEmpty()) {
+                        val imgFile = File(goal.imagePath)
+                        if (imgFile.exists()) {
+                            ivGoalImage.setImageURI(imgFile.toUri())
+                        }
                     }
-                }
-            } else {
-                runOnUiThread {
-                    findViewById<TextView>(R.id.tvFeaturedGoalTitle).text =
-                        getString(R.string.no_goals_yet)
-                    findViewById<TextView>(R.id.tvFeaturedGoalDate).text = ""
-                    findViewById<TextView>(R.id.tvFeaturedCurrentAmount).text = "R 0"
-                    findViewById<TextView>(R.id.tvFeaturedGoalAmount).text = "R 0"
-                    findViewById<TextView>(R.id.tvFeaturedGoalPercentage).text = "0%"
-                    findViewById<ProgressBar>(R.id.progressFeaturedGoal).progress = 0
-                    findViewById<PieChartView>(R.id.pieChartFeatured).setData(emptyList())
+
+                } else {
+                    val pieChartView = findViewById<PieChartView>(R.id.pieChartFeatured)
+                    pieChartView.setData(emptyList())
+                    Log.e("GoalsActivity", "No featured goal found")
                 }
             }
         }
     }
-
     private fun loadAllGoals() {
         lifecycleScope.launch {
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             Log.d("GoalsActivity", "Loading all goals for userId: $userId")
-            val goals = db.goalDao().getActiveGoals(userId)
-            runOnUiThread {
-                goalsAdapter.updateGoals(goals)
+
+            db.goalDao().getActiveGoals(userId).collect { goals ->
+                runOnUiThread {
+                    goalsAdapter.updateGoals(goals)
+                }
             }
         }
     }
@@ -237,7 +249,6 @@ class GoalsActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-            Log.d("GoalsActivity", "Creating goal for userId: $userId")
             val newGoal = Goal(
                 userId = userId,
                 goalName = name,
@@ -248,12 +259,10 @@ class GoalsActivity : AppCompatActivity() {
             val newId = db.goalDao().insert(newGoal)
             val savedGoal = newGoal.copy(goalId = newId.toInt())
 
-            // Sync to Firebase with the real Room-generated ID
             FirebaseRepository().saveGoal(savedGoal)
 
             runOnUiThread {
                 Toast.makeText(this@GoalsActivity, "Goal created", Toast.LENGTH_SHORT).show()
-                // Reset Form
                 findViewById<TextInputEditText>(R.id.etGoalName).text?.clear()
                 findViewById<TextInputEditText>(R.id.etGoalAmount).text?.clear()
                 findViewById<TextInputEditText>(R.id.etTargetDate).text?.clear()
@@ -261,8 +270,6 @@ class GoalsActivity : AppCompatActivity() {
                 findViewById<TextView>(R.id.tvUploadImage).text = "Upload Goal Image"
                 selectedImageUri = null
             }
-            loadAllGoals()
-            loadFeaturedGoal()
         }
     }
 
@@ -288,13 +295,13 @@ class GoalsActivity : AppCompatActivity() {
                     lifecycleScope.launch {
                         val newAmount = goal.currentAmount + amount
                         db.goalDao().updateCurrentAmount(goal.goalId, newAmount)
-                        Log.d("GoalsActivity", "Savings added to '${goal.goalName}': +$amount → total $newAmount")
+
+                        val updatedGoal = goal.copy(currentAmount = newAmount)
+                        FirebaseRepository().saveGoal(updatedGoal)
 
                         runOnUiThread {
                             Toast.makeText(this@GoalsActivity, "Savings added", Toast.LENGTH_SHORT).show()
                         }
-                        loadFeaturedGoal()
-                        loadAllGoals()
                     }
                 } else {
                     Toast.makeText(this, "Invalid amount", Toast.LENGTH_SHORT).show()
@@ -306,7 +313,14 @@ class GoalsActivity : AppCompatActivity() {
 
     private fun showSelectGoalToUpdateDialog() {
         lifecycleScope.launch {
-            val goals = db.goalDao().getActiveGoals(FirebaseAuth.getInstance().currentUser?.uid ?: "")
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+            val goals: List<Goal> = try {
+                db.goalDao().getActiveGoals(userId).first()
+            } catch (e: Exception) {
+                emptyList()
+            }
+
             if (goals.isEmpty()) {
                 runOnUiThread {
                     Toast.makeText(this@GoalsActivity, "No goals yet", Toast.LENGTH_SHORT).show()
@@ -347,16 +361,12 @@ class GoalsActivity : AppCompatActivity() {
                         val newAmount = goal.currentAmount + amount
                         db.goalDao().updateCurrentAmount(goal.goalId, newAmount)
 
-                        // Sync updated currentAmount to Firebase
                         val updatedGoal = goal.copy(currentAmount = newAmount)
                         FirebaseRepository().saveGoal(updatedGoal)
-                        Log.d("GoalsActivity", "Goal current amount synced to Firebase: $newAmount")
 
                         runOnUiThread {
                             Toast.makeText(this@GoalsActivity, "Goal updated", Toast.LENGTH_SHORT).show()
                         }
-                        loadFeaturedGoal()
-                        loadAllGoals()
                     }
                 } else {
                     Toast.makeText(this, "Invalid amount", Toast.LENGTH_SHORT).show()
@@ -419,18 +429,15 @@ class GoalsActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                Log.d("GoalsActivity", "Saving spending goal for userId: $userId")
                 val spendingGoal = SpendingGoal(
                     userId = userId,
-                    minMonthlySpend = min!!,
-                    maxMonthlySpend = max!!,
+                    minMonthlySpend = min,
+                    maxMonthlySpend = max,
                     month = month
                 )
                 val newId = db.spendingGoalDao().insert(spendingGoal)
                 val savedGoal = spendingGoal.copy(id = newId.toInt())
-                Log.d("GoalsActivity", "Spending goals saved: min=$min max=$max month=$month")
 
-                // Sync to Firebase
                 FirebaseRepository().saveSpendingGoal(savedGoal)
 
                 runOnUiThread {

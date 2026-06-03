@@ -19,12 +19,16 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.smartspend.data.entity.Expense
+import com.smartspend.data.entity.ExpenseWithCategory
 import com.smartspend.data.firebase.FirebaseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+import kotlinx.coroutines.flow.first
+import androidx.core.content.edit
+import com.smartspend.data.entity.Income
 
 class DashboardActivity : AppCompatActivity() {
 
@@ -32,10 +36,10 @@ class DashboardActivity : AppCompatActivity() {
         (application as SmartSpendApp).database
     }
 
-    private lateinit var recentExpensesAdapter: RecentExpensesAdapter
-
-    // TRACKER: Holds a reference to the active loading task
+    // 🌟 FIX: Migrated from old RecentExpensesAdapter to the verified TransactionAdapter
+    private lateinit var transactionAdapter: TransactionAdapter
     private var dashboardLoadJob: Job? = null
+    private var transactions: List<ExpenseWithCategory> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,8 +70,18 @@ class DashboardActivity : AppCompatActivity() {
         val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
         rvRecentExpenses.layoutManager = LinearLayoutManager(this)
 
-        recentExpensesAdapter = RecentExpensesAdapter()
-        rvRecentExpenses.adapter = recentExpensesAdapter
+        // 🌟 FIX: Instantiate your uniform TransactionAdapter layout structure
+        transactionAdapter = TransactionAdapter(
+            transactions = emptyList(),
+            onImageClick = { receiptPath, imagePath ->
+                val intent = Intent(this, ReceiptPreviewActivity::class.java)
+                intent.putExtra("receiptPath", receiptPath)
+                intent.putExtra("imagePath", imagePath)
+                startActivity(intent)
+            },
+            onItemClick = null
+        )
+        rvRecentExpenses.adapter = transactionAdapter
 
         findViewById<Button>(R.id.btnQuickAddExpense).setOnClickListener {
             startActivity(Intent(this, ExpenseActivity::class.java))
@@ -162,33 +176,24 @@ class DashboardActivity : AppCompatActivity() {
                 val budgetString = input.text.toString().trim()
 
                 if (budgetString.isEmpty()) {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.budget_empty_error),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, getString(R.string.budget_empty_error), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
                 val budget = budgetString.toFloatOrNull()
                 if (budget == null || budget <= 0f) {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.budget_invalid_error),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, getString(R.string.budget_invalid_error), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
-                val editor = prefs.edit()
-                editor.putFloat("monthly_budget_$monthIndex", budget)
-                val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
-                if (monthIndex == currentMonth) {
-                    editor.putFloat("monthly_budget", budget)
+                prefs.edit {
+                    putFloat("monthly_budget_$monthIndex", budget)
+                    val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+                    if (monthIndex == currentMonth) {
+                        putFloat("monthly_budget", budget)
+                    }
                 }
-                editor.apply()
 
-                // 🌟 MINE: Preserve your Firebase budget cloud sync here!
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val firebaseRepo = FirebaseRepository()
@@ -200,155 +205,99 @@ class DashboardActivity : AppCompatActivity() {
                 }
 
                 loadDashboardData()
-                Toast.makeText(
-                    this,
-                    getString(R.string.budget_set_for_month, monthName),
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, getString(R.string.budget_set_for_month, monthName), Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
     private fun loadDashboardData() {
-        // 🌟 THEIRS: Cancel any identical data loading tasks that are already running for stability
         dashboardLoadJob?.cancel()
 
-        // 🌟 THEIRS: Assign the optimized async thread task
         dashboardLoadJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 val cal = Calendar.getInstance()
                 val currentMonth = cal.get(Calendar.MONTH)
                 val currentYear = cal.get(Calendar.YEAR)
 
+                // Date formatting for ranges
                 val startDate = "%04d-%02d-01".format(currentYear, currentMonth + 1)
                 val endDate = "%04d-%02d-%02d".format(
                     currentYear, currentMonth + 1, cal.get(Calendar.DAY_OF_MONTH)
                 )
 
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                Log.d("Dashboard", "Loading combined transactional data for user: $userId")
-
-                // 1. Load calculated metrics based on date boundaries
+                // 1. Fetch only the data we need (totals and limited list)
                 val totalExpenses = db.expenseDao().getTotalByDateRange(userId, startDate, endDate)
+                val totalIncome = try { db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate) } catch (e: Exception) { 0.0 }
 
-                val totalIncome = try {
-                    db.incomeDao().getTotalIncomeByDateRange(userId, startDate, endDate)
-                } catch (e: Exception) {
-                    Log.e("DashboardActivity", "Error calling incomeDao stream calculation", e)
-                    0.0
-                }
+                // Using the optimized DAO queries (LIMIT 5)
+                val recentExpenses = db.expenseDao().getRecentExpensesWithCategory(userId)
+                val recentIncomes = db.incomeDao().getRecentIncome(userId)
 
-                // 2. Load lists from both tables to merge into a single statement feed
-                val rawExpensesWithCategory = db.expenseDao().getAllExpensesWithCategoryNames(userId)
-
-                val rawIncomes = try {
-                    db.incomeDao().getAllIncome(userId)
-                } catch (e: Exception) {
-                    Log.e("DashboardActivity", "Error loading row list from income Dao collection structure", e)
-                    emptyList()
-                }
-
-                // 3. Map Income list entities into general compatible shapes matching adapter item expectations
-                val convertedIncomes = rawIncomes.map { income: com.smartspend.data.entity.Income ->
-                    Expense(
-                        userId = income.userId,
-                        amount = income.amount,
-                        description = if (income.source.isNullOrEmpty()) "Income" else income.source,
-                        date = income.date,
-                        startTime = "00:00",
-                        endTime = "00:00",
-                        categoryId = -1,
-                        receiptPath = null,
-                        imagePath = income.imagePath,
-                        createdAt = income.createdAt,
+                // 2. Process and Map Incomes to common format
+                val convertedIncomesWithCategory = recentIncomes.map { income ->
+                    ExpenseWithCategory(
+                        expense = Expense(
+                            expenseId = income.id,
+                            userId = income.userId,
+                            amount = income.amount,
+                            // Fallback: Use income.description if present, otherwise source, otherwise "Income"
+                            description = income.description ?: income.source.ifBlank { "Income" },
+                            date = income.date,
+                            startTime = "00:00",
+                            endTime = "00:00",
+                            categoryId = -1,
+                            receiptPath = null,
+                            imagePath = income.imagePath,
+                            createdAt = income.createdAt
+                        ),
+                        categoryName = income.source.ifBlank { "Income" }
                     )
                 }
 
-                val processedExpenses = rawExpensesWithCategory.map { item ->
-                    val rawExpense = item.expense
-                    val catName = item.categoryName
+                // 3. Process Expenses (Now fully handled by Room!)
+                val processedExpenses = recentExpenses.map { item ->
+                    // The Room query with JOIN already populates item.categoryName
+                    // We just ensure the description fallback logic is applied
+                    val displayDescription = if (item.expense.description.isBlank()) item.categoryName else item.expense.description
 
-                    // Format output title as: "Category Name (Custom Note Details)" or just "Category Name"
-                    val displayDescription = if (rawExpense.description.isEmpty() || rawExpense.description == "Expense") {
-                        catName
-                    } else {
-                        "$catName (${rawExpense.description})"
-                    }
-
-                    rawExpense.copy(description = displayDescription)
+                    // Return a new object with the corrected description
+                    ExpenseWithCategory(
+                        expense = item.expense.copy(description = displayDescription),
+                        categoryName = item.categoryName
+                    )
                 }
 
-                // 4. Merge streams, sort, and slice to extract the newest 5 items
-                val masterFeedList = processedExpenses + convertedIncomes
-                val sortedTransactions = masterFeedList.sortedByDescending { it.createdAt }
-                val recentTransactions = sortedTransactions.take(5)
-                val totalTransactionsCount = masterFeedList.size
+                // 4. Combine, sort, and slice the final list
+                val masterFeedList = (processedExpenses + convertedIncomesWithCategory)
+                    .sortedByDescending { it.expense.createdAt }
+                    .take(5)
 
-                // 5. Shared preferences budget math limits calculations
+                // 5. Budget Calculation Logic
                 val prefs = getSharedPreferences("SmartSpendPrefs", MODE_PRIVATE)
-                val savedBudget = prefs.getFloat(
-                    "monthly_budget_$currentMonth",
-                    prefs.getFloat("monthly_budget", 0f)
-                ).toDouble()
-
+                val savedBudget = prefs.getFloat("monthly_budget_$currentMonth", prefs.getFloat("monthly_budget", 0f)).toDouble()
                 val budget = if (savedBudget > 0) savedBudget else 0.0
+                val remaining = (budget - totalExpenses) + totalIncome
+                val progress = if (budget > 0) ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100) else 0
 
-                // INTEGRATED BALANCE MATH FORMULA
-                val remaining = if (budget > 0) {
-                    (budget - totalExpenses) + totalIncome
-                } else {
-                    0.0 + totalIncome
-                }
-
-                val progress = if (budget > 0) {
-                    ((totalExpenses / budget) * 100).toInt().coerceIn(0, 100)
-                } else 0
-
-                // Context-switch cleanly back to the Main thread thread-pool for layout operations
+                // 6. UI Updates on Main Thread
                 withContext(Dispatchers.Main) {
-                    findViewById<TextView>(R.id.tvTotalBudget)?.text =
-                        getString(R.string.amount_format, budget.toFloat())
-
-                    findViewById<TextView>(R.id.tvTotalSpent)?.text =
-                        getString(R.string.amount_format, totalExpenses.toFloat())
-
-                    findViewById<TextView>(R.id.tvRemaining)?.text =
-                        getString(R.string.amount_format, remaining.toFloat())
-
-                    findViewById<TextView>(R.id.tvTransactionCount)?.text =
-                        getString(R.string.transaction_count, totalTransactionsCount)
-
-                    val latestDesc = sortedTransactions.firstOrNull()?.description
-                        ?: getString(R.string.none_label)
-                    findViewById<TextView>(R.id.tvLatestExpense)?.text =
-                        getString(R.string.latest_format, latestDesc)
-
-                    findViewById<TextView>(R.id.tvTotalIncome)?.apply {
-                        text = getString(R.string.amount_format, totalIncome.toFloat())
-                        setTextColor(getColor(R.color.status_success))
-                    }
+                    findViewById<TextView>(R.id.tvTotalBudget)?.text = getString(R.string.amount_format, budget.toFloat())
+                    findViewById<TextView>(R.id.tvTotalSpent)?.text = getString(R.string.amount_format, totalExpenses.toFloat())
+                    findViewById<TextView>(R.id.tvRemaining)?.text = getString(R.string.amount_format, remaining.toFloat())
+                    findViewById<TextView>(R.id.tvTotalIncome)?.text = getString(R.string.amount_format, totalIncome.toFloat())
+                    findViewById<TextView>(R.id.tvLatestExpense)?.text = getString(R.string.latest_format, masterFeedList.firstOrNull()?.expense?.description ?: "None")
 
                     val progressBar = findViewById<ProgressBar>(R.id.progressBudget)
                     progressBar?.progress = progress
-                    val progressDrawable = when {
-                        progress >= 100 -> R.drawable.progress_bar_danger
-                        progress >= 80  -> R.drawable.progress_bar_warning
-                        else            -> R.drawable.card_gradient_background
-                    }
-                    progressBar?.progressDrawable =
-                        androidx.core.content.ContextCompat.getDrawable(
-                            this@DashboardActivity,
-                            progressDrawable
-                        )
 
-                    recentExpensesAdapter.updateData(recentTransactions)
-                    Log.d("Dashboard", "Successfully rendered historical update pass containing ${recentTransactions.size} blended transactions.")
+                    // Update the adapter with the processed list
+                    transactionAdapter.updateData(masterFeedList)
                 }
 
             } catch (e: Exception) {
                 Log.e("DashboardActivity", "Error loading dashboard metrics: ${e.message}")
-                e.printStackTrace()
             }
         }
     }

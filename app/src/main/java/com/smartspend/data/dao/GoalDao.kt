@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.smartspend.data.entity.Goal
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface GoalDao {
@@ -19,14 +20,18 @@ interface GoalDao {
     @Delete
     suspend fun delete(goal: Goal)
 
+    // OPTIMIZED: Switched to Flow so the goals view matches any additions instantly
     @Query("SELECT * FROM goals WHERE userId = :userId ORDER BY goalId ASC")
-    suspend fun getAllGoals(userId: String): List<Goal>
+    fun getAllGoals(userId: String): Flow<List<Goal>>
 
-    @Query("SELECT * FROM goals WHERE userId = :userId AND isCompleted = 0 ORDER BY goalId ASC LIMIT 1")
-    suspend fun getFeaturedGoal(userId: String): Goal?
+    // OPTIMIZED: Switched to Flow so your Dashboard's "Featured Goal" card updates
+    // reactively the exact moment a user allocates money towards it
+    @Query("SELECT * FROM goals WHERE userId = :userId ORDER BY goalId DESC LIMIT 1")
+    fun getFeaturedGoal(userId: String): Flow<Goal?>
 
+    // OPTIMIZED: Switched to Flow for real-time tracking of active milestones
     @Query("SELECT * FROM goals WHERE userId = :userId AND isCompleted = 0 ORDER BY goalId ASC")
-    suspend fun getActiveGoals(userId: String): List<Goal>
+    fun getActiveGoals(userId: String): Flow<List<Goal>>
 
     @Query("UPDATE goals SET currentAmount = :amount WHERE goalId = :goalId")
     suspend fun updateCurrentAmount(goalId: Int, amount: Double)

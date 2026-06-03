@@ -59,6 +59,7 @@ class GoalsAdapter(
 
         // Set Percentage Text
         holder.tvGoalPercentage.text = ctx.getString(R.string.percentage_format, percentage)
+        holder.tvGoalPercentage.setTextColor(android.graphics.Color.BLACK)
 
         // Set the Goal Image
         if (!goal.imagePath.isNullOrEmpty()) {

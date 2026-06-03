@@ -3,31 +3,61 @@ package com.smartspend.data.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Embedded
+import com.smartspend.data.entity.ExpenseWithCategory
 import com.smartspend.data.entity.Expense
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExpenseDao {
 
-    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    // 🌟 FIX: Added OnConflictStrategy.REPLACE to instantly kill the login duplicate bug!
+    @Query("""
+    SELECT * FROM expenses 
+    WHERE userId = :userId 
+    AND (:categoryId = -1 OR categoryId = :categoryId)
+    AND (:date = '' OR date = :date)
+    AND (description LIKE '%' || :search || '%')
+    ORDER BY createdAt DESC
+""")
+    suspend fun getFilteredExpenses(userId: String, search: String, categoryId: Int, date: String): List<Expense>
+    @Query("""
+    SELECT e.*, COALESCE(c.categoryName, 'Income') as categoryName 
+    FROM expenses e
+    LEFT JOIN categories c ON e.categoryId = c.categoryId
+    WHERE e.userId = :userId 
+    ORDER BY e.createdAt DESC 
+    LIMIT 5
+""")
+    suspend fun getRecentExpensesWithCategory(userId: String): List<ExpenseWithCategory>
+    @Query("UPDATE expenses SET receiptPath = :path WHERE expenseId = :expenseId")
+    suspend fun updateReceiptPath(expenseId: Int, path: String)
+
+    @Query("UPDATE expenses SET imagePath = :path WHERE expenseId = :expenseId")
+    suspend fun updateOriginalImagePath(expenseId: Int, path: String)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(expense: Expense): Long
 
-    @Query("SELECT * FROM expenses WHERE userId = :userId")
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(expenses: List<Expense>)
+
+    @Query("SELECT * FROM expenses WHERE userId = :userId ORDER BY date DESC, createdAt DESC LIMIT 100")
     suspend fun getAllExpenses(userId: String): List<Expense>
 
     /**
-     * Fetches all expenses for a user and embeds the corresponding category name
-     * by performing an INNER JOIN on the categories table. Used to prevent generic
-     * "Expense" descriptions on the UI feed.
+     * 🌟 FIX: Changed INNER JOIN to LEFT JOIN & added COALESCE.
+     * This ensures Income streams (categoryId = -1) are not deleted/ignored by the query.
      */
     @Query("""
-        SELECT e.*, c.categoryName 
+        SELECT e.*, COALESCE(c.categoryName, 'Income') as categoryName 
         FROM expenses e
-        INNER JOIN categories c ON e.categoryId = c.categoryId
+        LEFT JOIN categories c ON e.categoryId = c.categoryId
         WHERE e.userId = :userId
+        ORDER BY e.date DESC, e.createdAt DESC
+        LIMIT 100
     """)
-    suspend fun getAllExpensesWithCategoryNames(userId: String): List<ExpenseWithCategory>
+    fun getAllExpensesWithCategoryNames(userId: String): Flow<List<ExpenseWithCategory>>
 
     @Delete
     suspend fun delete(expense: Expense)
@@ -74,31 +104,8 @@ interface ExpenseDao {
     suspend fun updateImagePath(expenseId: Int, imagePath: String)
 }
 
-/**
- * Data wrapper class combining the raw Expense entity with its relational Category Name string.
- * Used by [ExpenseDao.getAllExpensesWithCategoryNames].
- */
-data class ExpenseWithCategory(
-    @Embedded val expense: Expense,
-    val categoryName: String
-)
 
-data class CategoryTotal(
-    val categoryId: Int,
-    val total: Double
-)
-
-data class CategoryWithTotal(
-    val categoryName: String,
-    val total: Double
-)
-
-data class CategorySummary(
-    val categoryName: String,
-    val total: Double
-)
-
-data class TrendSummary(
-    val month: String,
-    val total: Double
-)
+data class CategoryTotal(val categoryId: Int, val total: Double)
+data class CategoryWithTotal(val categoryName: String, val total: Double)
+data class CategorySummary(val categoryName: String, val total: Double)
+data class TrendSummary(val month: String, val total: Double)

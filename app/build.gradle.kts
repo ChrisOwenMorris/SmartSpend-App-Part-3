@@ -68,4 +68,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     // Firebase Storage (for receipt images)
     implementation("com.google.firebase:firebase-storage-ktx")
+
+    implementation("io.coil-kt:coil:2.6.0")
 }

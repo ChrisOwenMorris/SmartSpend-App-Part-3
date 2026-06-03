@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 
@@ -15,38 +16,49 @@ class ReceiptPreviewActivity : AppCompatActivity() {
         setContentView(R.layout.activity_receipt_preview)
 
         val imageView = findViewById<ImageView>(R.id.fullReceiptImage)
-        val imagePath = intent.getStringExtra("receiptPath")
 
-        Log.d("ReceiptPreviewActivity", "Received image path data link: $imagePath")
+        val receiptPath = intent.getStringExtra("receiptPath")
+        val imagePath = intent.getStringExtra("imagePath")
 
-        if (!imagePath.isNullOrEmpty()) {
-            try {
-                // Clear out the view canvas to ensure fresh drawing
-                imageView.setImageURI(null)
+        Log.d("ReceiptPreviewActivity", "Received paths: Receipt=$receiptPath, Image=$imagePath")
 
-                // 🌟 FIXED: Added check for "file" to catch file:// formatted string paths cleanly
-                if (imagePath.startsWith("http") || imagePath.startsWith("content") || imagePath.startsWith("file")) {
-                    imageView.setImageURI(Uri.parse(imagePath))
-                    Log.d("ReceiptPreviewActivity", "Successfully bound URI string to view component")
-                } else {
-                    // Fall back to local file path verification if it's a raw un-schemed absolute path string
-                    val file = File(imagePath)
-                    if (file.exists()) {
-                        imageView.setImageURI(Uri.fromFile(file))
-                        Log.d("ReceiptPreviewActivity", "Successfully bound local device file layout link")
-                    } else {
-                        Log.w("ReceiptPreviewActivity", "Local physical file does not exist on disk path space")
-                        imageView.setImageResource(android.R.drawable.ic_menu_report_image)
-                    }
+        // Check if both exist to trigger a choice
+        if (!receiptPath.isNullOrEmpty() && !imagePath.isNullOrEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Select Image to View")
+                .setItems(arrayOf("View Receipt", "View Original Image")) { _, which ->
+                    val selectedPath = if (which == 0) receiptPath else imagePath
+                    loadSelectedImage(selectedPath, imageView)
                 }
-            } catch (e: Exception) {
-                Log.e("ReceiptPreviewActivity", "Error displaying receipt preview payload stream", e)
-                imageView.setImageResource(android.R.drawable.ic_menu_report_image)
-                Toast.makeText(this, "Failed to render full screen layout preview", Toast.LENGTH_SHORT).show()
-            }
+                .setCancelable(false)
+                .show()
         } else {
-            // Placeholder fallback if string was empty
+            // Only one or none exist, just load the one that does
+            val finalPath = receiptPath ?: imagePath
+            if (!finalPath.isNullOrEmpty()) {
+                loadSelectedImage(finalPath, imageView)
+            } else {
+                imageView.setImageResource(android.R.drawable.ic_menu_report_image)
+            }
+        }
+    }
+
+    private fun loadSelectedImage(path: String, imageView: ImageView) {
+        try {
+            val cleanPath = path.replace("file://", "")
+            val file = File(cleanPath)
+
+            if (file.exists()) {
+                imageView.setImageURI(Uri.fromFile(file))
+                Log.d("ReceiptPreviewActivity", "Successfully loaded image: $cleanPath")
+            } else {
+                Log.w("ReceiptPreviewActivity", "File not found at: $cleanPath")
+                imageView.setImageResource(android.R.drawable.ic_menu_report_image)
+            }
+        } catch (e: Exception) {
+            Log.e("ReceiptPreviewActivity", "Error loading image", e)
             imageView.setImageResource(android.R.drawable.ic_menu_report_image)
+            Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show()
         }
     }
 }
