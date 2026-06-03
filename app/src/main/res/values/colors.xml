@@ -2,6 +2,8 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="switch_track_tint">#10B981</color>
+    <color name="switch_thumb_tint">#FFFFFF</color>
 
     <!-- SmartSpend brand colours -->
     <color name="ss_blue">#0066CC</color>
@@ -18,4 +20,22 @@
     <color name="status_success">#00C853</color>
     <color name="status_danger">#E53935</color>
     <color name="status_warning">#FF8F00</color>
+    <!-- ══════════════════════════════════════════════════════════════════════
+     COLOR SELECTORS — create these in res/color/
+     ══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── switch_track_tint.xml  (res/color/switch_track_tint.xml) ─────────── -->
+    <?xml version="1.0" encoding="utf-8"?>
+    <selector xmlns:android="http://schemas.android.com/apk/res/android">
+        <item android:state_checked="true"  android:color="#8AB8E8"/>  <!-- ss_blue at 50% -->
+        <item android:state_checked="false" android:color="#CFD8DC"/>
+    </selector>
+
+
+    <!-- ── switch_thumb_tint.xml  (res/color/switch_thumb_tint.xml) ─────────── -->
+    <?xml version="1.0" encoding="utf-8"?>
+    <selector xmlns:android="http://schemas.android.com/apk/res/android">
+        <item android:state_checked="true"  android:color="#0066CC"/>  <!-- ss_blue -->
+        <item android:state_checked="false" android:color="#FFFFFF"/>
+    </selector>
 </resources>
