@@ -110,6 +110,15 @@ class ExpenseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val themePrefs = getSharedPreferences("smartspend_prefs", MODE_PRIVATE)
+        val savedTheme = themePrefs.getString("theme_colour", "blue") ?: "blue"
+        val themeRes = when (savedTheme) {
+            "green"  -> R.style.Theme_SmartSpend_Green
+            "purple" -> R.style.Theme_SmartSpend_Purple
+            "orange" -> R.style.Theme_SmartSpend_Orange
+            else     -> R.style.Theme_SmartSpend_Blue
+        }
+        setTheme(themeRes)
         setContentView(R.layout.activity_expense)
 
         NavigationHelper.setupMenu(this)
@@ -338,11 +347,12 @@ class ExpenseActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 val newCategory = Category(userId = userId, categoryName = name)
-                db.categoryDao().insert(newCategory)
-                Log.d("ExpenseActivity", "New category '$name' inserted")
+                val newCategoryId = db.categoryDao().insert(newCategory)
+                val savedCategory = newCategory.copy(categoryId = newCategoryId.toInt())
+                Log.d("ExpenseActivity", "New category '$name' inserted with ID: $newCategoryId")
 
                 val firebaseRepo = FirebaseRepository()
-                firebaseRepo.saveCategory(newCategory)
+                firebaseRepo.saveCategory(savedCategory)
 
                 reloadCategorySpinner(userId)
 
@@ -487,11 +497,13 @@ class ExpenseActivity : AppCompatActivity() {
                         createdAt = currentTimestamp // Set explicit timestamp
                     )
 
-                    // 1. Write locally to Room DB
-                    db.expenseDao().insert(expense)
+                    // 1. Write locally to Room DB and capture generated ID
+                    val newId = db.expenseDao().insert(expense)
+                    val savedExpense = expense.copy(expenseId = newId.toInt())
+                    Log.d("ExpenseActivity", "Expense saved with ID: $newId")
 
-                    // 2. Sync to Firebase Cloud Repository
-                    firebaseRepo.saveExpense(expense)
+                    // 2. Sync to Firebase Cloud Repository with real ID
+                    firebaseRepo.saveExpense(savedExpense, categoryName)
 
                 } else {
                     // ─── PATH B: SAVING AN INCOME ──────────────────────────
@@ -505,11 +517,13 @@ class ExpenseActivity : AppCompatActivity() {
                         createdAt = currentTimestamp // Set explicit timestamp
                     )
 
-                    // 1. Write locally to Room DB
-                    db.incomeDao().insert(income)
+                    // 1. Write locally to Room DB and capture generated ID
+                    val newIncomeId = db.incomeDao().insert(income)
+                    val savedIncome = income.copy(id = newIncomeId.toInt())
+                    Log.d("ExpenseActivity", "Income saved with ID: $newIncomeId")
 
-                    // 2. Sync to Firebase Cloud Repository
-                    firebaseRepo.saveIncome(income)
+                    // 2. Sync to Firebase Cloud Repository with real ID
+                    firebaseRepo.saveIncome(savedIncome)
                 }
 
                 // ─── SUCCESS HANDOFF ROUTING ────────────────────────────────

@@ -39,9 +39,29 @@ class DashboardActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val themePrefs = getSharedPreferences("smartspend_prefs", MODE_PRIVATE)
+        val savedTheme = themePrefs.getString("theme_colour", "blue") ?: "blue"
+        val themeRes = when (savedTheme) {
+            "green"  -> R.style.Theme_SmartSpend_Green
+            "purple" -> R.style.Theme_SmartSpend_Purple
+            "orange" -> R.style.Theme_SmartSpend_Orange
+            else     -> R.style.Theme_SmartSpend_Blue
+        }
+        setTheme(themeRes)
         setContentView(R.layout.activity_dashboard)
 
         NavigationHelper.setupMenu(this)
+
+        // Restore saved theme colour on every launch
+        val prefs = getSharedPreferences("smartspend_prefs", MODE_PRIVATE)
+        val savedColour = prefs.getString("theme_colour", "blue") ?: "blue"
+        val colorHex = when (savedColour) {
+            "green"  -> "#4CAF50"
+            "purple" -> "#9C27B0"
+            "orange" -> "#FF9800"
+            else     -> "#1976D2"
+        }
+        window.statusBarColor = android.graphics.Color.parseColor(colorHex)
 
         val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
         rvRecentExpenses.layoutManager = LinearLayoutManager(this)

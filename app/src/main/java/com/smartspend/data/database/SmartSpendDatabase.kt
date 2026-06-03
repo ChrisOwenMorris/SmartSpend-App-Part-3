@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 
 import com.smartspend.data.dao.CategoryDao
 import com.smartspend.data.dao.ExpenseDao
@@ -30,7 +28,7 @@ import com.smartspend.data.entity.User
         Goal::class,
         SpendingGoal::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class SmartSpendDatabase : RoomDatabase() {
@@ -47,22 +45,15 @@ abstract class SmartSpendDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: SmartSpendDatabase? = null
 
-        // Safe migration strategy to preserve existing database records
-        val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE expenses ADD COLUMN imagePath TEXT DEFAULT NULL")
-            }
-        }
-
         fun getDatabase(context: Context): SmartSpendDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     SmartSpendDatabase::class.java,
-                    "smartspend_db"
+                    "smartspend_db_v3"
                 )
-                    .addMigrations(MIGRATION_4_5)
-                    .build()
+                .fallbackToDestructiveMigration()
+                .build()
 
                 INSTANCE = instance
                 instance

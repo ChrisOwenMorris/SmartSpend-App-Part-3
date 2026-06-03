@@ -1,5 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme -->
+
+    <!-- Base theme -->
     <style name="Base.Theme.SmartSpend" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/ss_blue</item>
         <item name="colorPrimaryVariant">@color/ss_blue_dark</item>
@@ -9,16 +10,39 @@
 
     <style name="Theme.SmartSpend" parent="Base.Theme.SmartSpend" />
 
-    <!-- Custom style for the input fields -->
+    <!-- Blue theme (default) -->
+    <style name="Theme.SmartSpend.Blue" parent="Base.Theme.SmartSpend">
+        <item name="colorPrimary">@color/ss_blue</item>
+        <item name="colorPrimaryVariant">@color/ss_blue_dark</item>
+    </style>
+
+    <!-- Green theme -->
+    <style name="Theme.SmartSpend.Green" parent="Base.Theme.SmartSpend">
+        <item name="colorPrimary">@color/ss_green</item>
+        <item name="colorPrimaryVariant">@color/ss_green_dark</item>
+    </style>
+
+    <!-- Purple theme -->
+    <style name="Theme.SmartSpend.Purple" parent="Base.Theme.SmartSpend">
+        <item name="colorPrimary">@color/ss_purple</item>
+        <item name="colorPrimaryVariant">@color/ss_purple_dark</item>
+    </style>
+
+    <!-- Orange theme -->
+    <style name="Theme.SmartSpend.Orange" parent="Base.Theme.SmartSpend">
+        <item name="colorPrimary">@color/ss_orange</item>
+        <item name="colorPrimaryVariant">@color/ss_orange_dark</item>
+    </style>
+
     <style name="SmartSpend.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="boxStrokeColor">@color/ss_blue</item>
         <item name="hintTextColor">@color/ss_text_secondary</item>
     </style>
 
-    <!-- Custom style for primary button -->
     <style name="SmartSpend.Button.Primary" parent="Widget.Material3.Button">
         <item name="android:backgroundTint">@color/ss_blue</item>
         <item name="android:textColor">@color/white</item>
         <item name="cornerRadius">12dp</item>
     </style>
+
 </resources>

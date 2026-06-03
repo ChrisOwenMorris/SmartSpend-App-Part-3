@@ -10,7 +10,7 @@ import com.smartspend.data.entity.Category
 interface CategoryDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(category: Category)
+    suspend fun insert(category: Category): Long
 
     @Query("SELECT * FROM categories WHERE userId = :userId ORDER BY categoryName ASC")
     suspend fun getAllCategories(userId: String): List<Category>

@@ -86,6 +86,9 @@ class FirebaseRepository {
     suspend fun saveExpense(expense: Expense, categoryName: String = ""): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val desc = expense.description.replace(" ", "_").take(20)
+            val docName = "${userName.replace(" ", "_")}_${desc}_${expense.expenseId}"
             val expenseMap = hashMapOf(
                 "expenseId" to expense.expenseId,
                 "amount" to expense.amount,
@@ -96,15 +99,18 @@ class FirebaseRepository {
                 "category" to categoryName,
                 "receiptPath" to (expense.receiptPath ?: ""),
                 "imagePath" to (expense.imagePath ?: ""),
+                "userName" to userName,
+                "createdAt" to expense.createdAt,
+                "userId" to expense.userId,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("expenses")
-                .document(expense.expenseId.toString())
+                .document(docName)
                 .set(expenseMap)
                 .await()
-            Log.d("FirebaseRepo", "Expense saved to Firestore: ${expense.expenseId}")
+            Log.d("FirebaseRepo", "Expense saved to Firestore: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save expense: ${e.message}")
@@ -133,6 +139,8 @@ class FirebaseRepository {
     suspend fun saveCategory(category: Category): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_${category.categoryName.replace(" ", "_")}_${category.categoryId}"
             val categoryMap = hashMapOf(
                 "categoryId" to category.categoryId,
                 "categoryName" to category.categoryName,
@@ -141,10 +149,10 @@ class FirebaseRepository {
             firestore.collection("users")
                 .document(uid)
                 .collection("categories")
-                .document(category.categoryId.toString())
+                .document(docName)
                 .set(categoryMap)
                 .await()
-            Log.d("FirebaseRepo", "Category saved: ${category.categoryName}")
+            Log.d("FirebaseRepo", "Category saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save category: ${e.message}")
@@ -172,6 +180,8 @@ class FirebaseRepository {
     suspend fun saveGoal(goal: Goal): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_${goal.goalName.replace(" ", "_").take(20)}_${goal.goalId}"
             val goalMap = hashMapOf(
                 "goalId" to goal.goalId,
                 "userId" to goal.userId,
@@ -186,10 +196,10 @@ class FirebaseRepository {
             firestore.collection("users")
                 .document(uid)
                 .collection("goals")
-                .document(goal.goalId.toString())
+                .document(docName)
                 .set(goalMap)
                 .await()
-            Log.d("FirebaseRepo", "Goal saved: ${goal.goalName}")
+            Log.d("FirebaseRepo", "Goal saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save goal: ${e.message}")
@@ -202,6 +212,8 @@ class FirebaseRepository {
     suspend fun saveSpendingGoal(goal: SpendingGoal): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val docName = "${userName.replace(" ", "_")}_spending_goal_${goal.month}"
             val goalMap = hashMapOf(
                 "id" to goal.id,
                 "minMonthlySpend" to goal.minMonthlySpend,
@@ -212,10 +224,10 @@ class FirebaseRepository {
             firestore.collection("users")
                 .document(uid)
                 .collection("spending_goals")
-                .document(goal.month)
+                .document(docName)
                 .set(goalMap)
                 .await()
-            Log.d("FirebaseRepo", "Spending goal saved for: ${goal.month}")
+            Log.d("FirebaseRepo", "Spending goal saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save spending goal: ${e.message}")
@@ -255,22 +267,28 @@ class FirebaseRepository {
     suspend fun saveIncome(income: Income): Boolean {
         val uid = currentUserId ?: return false
         return try {
+            val userName = getCurrentUserName()
+            val desc = (income.description ?: income.source).replace(" ", "_").take(20)
+            val docName = "${userName.replace(" ", "_")}_${desc}_${income.id}"
             val incomeMap = hashMapOf(
                 "id" to income.id,
                 "source" to income.source,
                 "amount" to income.amount,
                 "date" to income.date,
                 "description" to (income.description ?: ""),
-                "imagePath" to (income.imagePath ?: ""), // Kept from theirs for layout maps
+                "imagePath" to (income.imagePath ?: ""),
+                "userName" to userName,
+                "createdAt" to income.createdAt,
+                "userId" to income.userId,
                 "syncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users")
                 .document(uid)
                 .collection("income")
-                .document(income.id.toString())
+                .document(docName)
                 .set(incomeMap)
                 .await()
-            Log.d("FirebaseRepo", "Income saved: ${income.id}")
+            Log.d("FirebaseRepo", "Income saved: $docName")
             true
         } catch (e: Exception) {
             Log.e("FirebaseRepo", "Failed to save income: ${e.message}")

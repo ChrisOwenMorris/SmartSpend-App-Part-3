@@ -66,6 +66,15 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val themePrefs = getSharedPreferences("smartspend_prefs", MODE_PRIVATE)
+        val savedTheme = themePrefs.getString("theme_colour", "blue") ?: "blue"
+        val themeRes = when (savedTheme) {
+            "green"  -> R.style.Theme_SmartSpend_Green
+            "purple" -> R.style.Theme_SmartSpend_Purple
+            "orange" -> R.style.Theme_SmartSpend_Orange
+            else     -> R.style.Theme_SmartSpend_Blue
+        }
+        setTheme(themeRes)
         setContentView(R.layout.activity_settings)
 
         NavigationHelper.setupMenu(this)
@@ -125,17 +134,19 @@ class SettingsActivity : AppCompatActivity() {
             currencyCodes[savedCurrencyIdx],
             currencySymbols[savedCurrencyIdx]
         )
-        // Theme label state
+        // Theme label state and colour restore
         updateThemeLabel(tvThemeLabel, tvThemeSubLabel, switchTheme.isChecked)
-        updateThemeChips(selectedThemeColour)
+        selectThemeColour(selectedThemeColour)
 
         // ── Theme switch ─────────────────────────────────────────────────────────
         switchTheme.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit { putBoolean("dark_mode", isChecked) }
             AppCompatDelegate.setDefaultNightMode(
                 if (isChecked) AppCompatDelegate.MODE_NIGHT_YES
                 else AppCompatDelegate.MODE_NIGHT_NO
             )
             updateThemeLabel(tvThemeLabel, tvThemeSubLabel, isChecked)
+            recreate()
         }
 
         // ── Theme colour chips ───────────────────────────────────────────────────
@@ -145,15 +156,9 @@ class SettingsActivity : AppCompatActivity() {
         themeOrange.setOnClickListener { selectThemeColour("orange") }
 
         // ── Notification switches ────────────────────────────────────────────────
-        switchSpendingAlerts.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) requestNotificationPermissionIfNeeded()
-        }
-        switchReminders.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) requestNotificationPermissionIfNeeded()
-        }
-        switchGoalUpdates.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) requestNotificationPermissionIfNeeded()
-        }
+        switchSpendingAlerts.setOnCheckedChangeListener { _, _ -> }
+        switchReminders.setOnCheckedChangeListener { _, _ -> }
+        switchGoalUpdates.setOnCheckedChangeListener { _, _ -> }
 
         // ── Change Password ──────────────────────────────────────────────────────
         rowChangePassword.setOnClickListener {
@@ -178,6 +183,12 @@ class SettingsActivity : AppCompatActivity() {
 
         // ── Save Settings ────────────────────────────────────────────────────────
         btnSaveSettings.setOnClickListener {
+            if (switchSpendingAlerts.isChecked ||
+                switchReminders.isChecked ||
+                switchGoalUpdates.isChecked) {
+                requestNotificationPermissionIfNeeded()
+            }
+
             prefs.edit {
                 putBoolean("dark_mode", switchTheme.isChecked)
                 putBoolean("biometric_enabled", switchBiometric.isChecked)
@@ -188,14 +199,17 @@ class SettingsActivity : AppCompatActivity() {
                 putString("theme_colour", selectedThemeColour)
             }
 
-            if (switchSpendingAlerts.isChecked)
-                sendNotification("Spending Alert", "You are being notified about your spending.", 1)
-            if (switchReminders.isChecked)
-                sendNotification("Bill Reminder", "You have upcoming bill and payment reminders.", 2)
-            if (switchGoalUpdates.isChecked)
-                sendNotification("Goal Update", "Check your progress on your savings goals.", 3)
+            AppCompatDelegate.setDefaultNightMode(
+                if (switchTheme.isChecked) AppCompatDelegate.MODE_NIGHT_YES
+                else AppCompatDelegate.MODE_NIGHT_NO
+            )
 
-            Toast.makeText(this, "✓ Settings saved", Toast.LENGTH_SHORT).show()
+            prefs.edit { putString("theme_colour", selectedThemeColour) }
+            Toast.makeText(this,
+                "Settings saved — restart the app to apply theme color",
+                Toast.LENGTH_SHORT).show()
+            recreate()
+            return@setOnClickListener
         }
     }
 
@@ -209,7 +223,6 @@ class SettingsActivity : AppCompatActivity() {
     private fun selectThemeColour(colour: String) {
         selectedThemeColour = colour
         updateThemeChips(colour)
-        Toast.makeText(this, "Theme: $colour (tap Save to apply)", Toast.LENGTH_SHORT).show()
     }
 
     private fun updateThemeChips(selected: String) {

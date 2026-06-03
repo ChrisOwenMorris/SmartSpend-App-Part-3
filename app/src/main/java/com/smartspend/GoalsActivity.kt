@@ -68,6 +68,15 @@ class GoalsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val themePrefs = getSharedPreferences("smartspend_prefs", MODE_PRIVATE)
+        val savedTheme = themePrefs.getString("theme_colour", "blue") ?: "blue"
+        val themeRes = when (savedTheme) {
+            "green"  -> R.style.Theme_SmartSpend_Green
+            "purple" -> R.style.Theme_SmartSpend_Purple
+            "orange" -> R.style.Theme_SmartSpend_Orange
+            else     -> R.style.Theme_SmartSpend_Blue
+        }
+        setTheme(themeRes)
         setContentView(R.layout.activity_goals)
 
         // Linking Navigation Helper to the menu button ID from your XML
