@@ -93,7 +93,6 @@ class GoalsActivity : AppCompatActivity() {
         setTheme(themeRes)
         setContentView(R.layout.activity_goals)
 
-        // 🌟 FIX: Bind the layout references directly matching your XML definitions
         tvGoalName = findViewById(R.id.tvFeaturedGoalTitle)
         tvGoalDate = findViewById(R.id.tvFeaturedGoalDate)
         tvCurrentAmount = findViewById(R.id.tvFeaturedCurrentAmount)

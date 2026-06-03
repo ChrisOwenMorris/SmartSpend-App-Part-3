@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark variant of gradient_header — original colors reduced ~40% in brightness -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:startColor="#003D7A"
+        android:centerColor="#104C74"
+        android:endColor="#0A6F4D"
+        android:angle="135" />
+</shape>

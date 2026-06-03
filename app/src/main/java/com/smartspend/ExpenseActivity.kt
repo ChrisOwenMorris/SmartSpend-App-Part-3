@@ -485,7 +485,7 @@ class ExpenseActivity : AppCompatActivity() {
         val categoryName = selectedCategory?.categoryName ?: ""
 
         val dbDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
-        val currentTimestamp = System.currentTimeMillis() // 🌟 CRITICAL: Dynamic sorting link
+        val currentTimestamp = System.currentTimeMillis()
 
         lifecycleScope.launch {
             try {

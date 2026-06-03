@@ -40,7 +40,6 @@ class DashboardActivity : AppCompatActivity() {
         (application as SmartSpendApp).database
     }
 
-    // 🌟 FIX: Migrated from old RecentExpensesAdapter to the verified TransactionAdapter
     private lateinit var transactionAdapter: TransactionAdapter
     private var dashboardLoadJob: Job? = null
     private var transactions: List<ExpenseWithCategory> = emptyList()
@@ -74,7 +73,6 @@ class DashboardActivity : AppCompatActivity() {
         val rvRecentExpenses = findViewById<RecyclerView>(R.id.rvRecentExpenses)
         rvRecentExpenses.layoutManager = LinearLayoutManager(this)
 
-        // 🌟 FIX: Instantiate your uniform TransactionAdapter layout structure
         transactionAdapter = TransactionAdapter(
             transactions = emptyList(),
             onImageClick = { receiptPath, imagePath ->
